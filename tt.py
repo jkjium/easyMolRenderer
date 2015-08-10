@@ -408,7 +408,7 @@ def main():
 	global globalShaderFactory
 	
 	if len(sys.argv)<3:
-		print 'Usage: tt.py povFile bucket/ipr\n'
+		print 'Usage: tt.py povFile (shader){diff|mirror|shiny|ambocc|glass|phong}\n'
 		return
 	
 	povFile = sys.argv[1]
@@ -446,7 +446,7 @@ def main():
 
 	fout.write(''.join(globalSCString['camera']))
 #	fout.write(''.join(globalSCString['light_source']))
-	fout.write(globalShaderFactory.SCString('diff'))
+	fout.write(globalShaderFactory.SCString(renderType))
 
 	print 'Lowest point: [%f]' % (globalFloorMin)
 	globalImage.attr['floor:p'][globalCamera.upIndex] = globalFloorMin-2
@@ -460,13 +460,12 @@ def main():
 	fout.close()
 	t3 = time.time()
 	print 'Done.'
-	print 'Time used : ' + str(t3-t2) + ' seconds.'
 	
-	print 'start rendering ...\n'
+	#print 'start rendering ...\n'
 	#p = subprocess.Popen('java -jar renderer.jar '+renderType, shell=True)#, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 	#retval = p.wait()
-	t4 = time.time()
-	print 'Time used : ' + str(t4-t3) + ' seconds.'
+	#t4 = time.time()
+	#print 'Time used : ' + str(t4-t3) + ' seconds.'
 
 if __name__=='__main__':
 	main()
