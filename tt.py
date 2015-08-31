@@ -7,6 +7,7 @@ import subprocess
 from camera import Camera
 from image import Image
 from shaderFactory import ShaderFactory
+from userInterface import UserInterface
 #camera {
 #  type pinhole
 #  eye    0.0 0.0 0.0
@@ -396,23 +397,25 @@ globalFloorMin = float('inf')
 #	p 0 -11.475104 0
 #	n 0 1 0
 #}
-globalFloorP = ''#'object {\n\tshader floor\n\ttype plane\n\t'
 
 globalCamera = Camera()
 globalImage = Image()
 globalShaderFactory = ShaderFactory()
 
+
 def main():
 	global globalCamera
 	global globalImage
 	global globalShaderFactory
+	global globalUI
 	
-	if len(sys.argv)<3:
-		print 'Usage: tt.py povFile (shader){diff|mirror|shiny|ambocc|glass|phong}\n'
+	if len(sys.argv)<2:
+		print 'Usage: tt.py povFile\n'
 		return
+
+	UI = UserInterface(globalImage, 0)
 	
 	povFile = sys.argv[1]
-	renderType = sys.argv[2]
 	print povFile
 	dispatch = {'camera':parseCamera, '#default':parseDefault, 'light_source':parseLightSource, 'plane':parsePlane, 'mesh2':parseMesh2, 'sphere':parseSphere, 'cylinder':parseCylinder}
 	with open (povFile, "r") as povfile:
@@ -441,17 +444,17 @@ def main():
 	print 'Writing SC information ...'
 
 	
-	shaderFloor = 'shader {\n\tname floor\n\ttype diffuse\n\tdiff 1.0 1.0 1.0\n}\n'
+	#shaderFloor = 'shader {\n\tname floor\n\ttype diffuse\n\tdiff 1.0 1.0 1.0\n}\n'
 	fout=open('output.sc','w')
 
 	fout.write(''.join(globalSCString['camera']))
 #	fout.write(''.join(globalSCString['light_source']))
-	fout.write(globalShaderFactory.SCString(renderType))
+	fout.write(globalShaderFactory.SCString(globalImage.attr['globalShader']))
 
 	print 'Lowest point: [%f]' % (globalFloorMin)
 	globalImage.attr['floor:p'][globalCamera.upIndex] = globalFloorMin-2
 	print 'Adjusted lowest point: [%f]\n' % (globalFloorMin-2)
-	fout.write(shaderFloor)
+	#fout.write(shaderFloor)
 	fout.write(globalImage.floorSCString())
 	
 	fout.write(''.join(globalSCString['mesh2']))

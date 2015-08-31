@@ -4,7 +4,7 @@ class ShaderFactory:
 		self.SCSelector={'diff': self.diffSCString, 'mirror': self.mirrorSCString, 'shiny':self.shinySCString, 'ambocc':self.amboccSCString, 'glass':self.glassSCString, 'phong':self.phongSCString}
 		
 		self.shaderType = 'diff'
-	
+
 	# given color return shader name	
 	def assignShaderName(self, color_id):
 		if color_id in self.ShaderNames:
@@ -16,7 +16,6 @@ class ShaderFactory:
 	def SCString(self, shaderType):
 		outString=''
 		for ckey in self.ShaderNames:
-			#outString = '%s\n%s' % (outString, self.diffSCString(ckey))
 			outString = '%s\n%s' % (outString, self.SCSelector[shaderType](ckey))
 		return outString+'\n'
 	
@@ -43,7 +42,7 @@ class ShaderFactory:
   	#	diff { "sRGB nonlinear" 0.80 0.250 0.250 }
   	#	refl 0.1
 	#}
-		return 'shader {\n\tname %s\n\ttype shiny\n\tdiff { "sRGB nonlinear" %s }\n\trefl 0.5\n}\n' % (self.ShaderNames[color_id], color_id)
+		return 'shader {\n\tname %s\n\ttype shiny\n\tdiff { "sRGB nonlinear" %s }\n\trefl 0.2\n}\n' % (self.ShaderNames[color_id], color_id)
 
 	def amboccSCString(self, color_id):
 	#shader {
@@ -75,5 +74,5 @@ class ShaderFactory:
  	#	power float 50.0
  	#	samples int 4
 	#}
-		return 'shader {\n\tname %s\n\ttype phong\n\tdiff { "sRGB linear" %s }\n\tspec { "sRGB linear" 0.5 0.5 0.1 } 50\n\tsamples 4\n}\n' % (self.ShaderNames[color_id], color_id)
+		return 'shader {\n\tname %s\n\ttype phong\n\tdiff { "sRGB linear" %s }\n\tspec { "sRGB linear" %s } 50\n\tsamples 4\n}\n' % (self.ShaderNames[color_id], color_id, color_id)
 

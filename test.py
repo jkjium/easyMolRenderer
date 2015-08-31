@@ -1,14 +1,14 @@
-from camera import Camera
+from userInterface import UserInterface
 from image import Image
-from shaderFactory import ShaderFactory
-sf = ShaderFactory()
-color = '0.2 0.2 0.8'
-sn = sf.assignShaderName(color)
-print sn
-color = '0.5 0.5 0.8'
-sn = sf.assignShaderName(color)
-print sn
-print sf.SCString()
+img = Image()
+ui = UserInterface(img, 0)
+
+print img.attr['bg_color']
+print img.attr['floor:color']
+print img.attr['floor:shader']
+print img.attr['globalShader']
+
+
 #c=Camera()
 #print c.SCString()
 #img = Image()

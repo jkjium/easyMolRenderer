@@ -49,14 +49,57 @@ class Image:
 		self.attr['maxdist']='200.0' # the higher the darker
 		
 		# background
-		self.attr['color'] = '{ "sRGB nonlinear" 1.0 1.0 1.0 }'
+		self.attr['bg_color'] = '{ "sRGB nonlinear" 1.0 1.0 1.0 }'
+		self.attr['floor:color'] = '1.0 1.0 1.0'
 		
 		# floor
 		self.floor = True
 		self.floorHeight = float('inf')
 		self.attr['floor:p'] = [0.0, 0.0, 0.0] # to be adjust according to the minimum point
 		self.attr['floor:n'] = '0 1 0' # determined by camera.up attribute
-		
+		self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype diffuse\n\tdiff 1.0 1.0 1.0\n}\n'
+
+		# global shader
+		self.attr['globalShader'] = 'diff'
+
+
+	def setGlobalShader(self, shader):
+		self.attr['globalShader'] = shader
+
+	def setBGGrayScale(self, index):
+		if index == 0:
+			self.attr['bg_color'] = '{ "sRGB nonlinear" 1.0 1.0 1.0 }'
+			self.attr['floor:color'] = '1.0 1.0 1.0'
+		elif index == 1:
+			self.attr['bg_color'] = '{ "sRGB nonlinear" 0.8 0.8 0.8 }'
+			self.attr['floor:color'] = '0.605 0.605 0.605'
+		elif index == 2:
+			self.attr['bg_color'] = '{ "sRGB nonlinear" 0.6 0.6 0.6 }'
+			self.attr['floor:color'] = '0.32 0.32 0.32'
+		elif index == 3:
+			self.attr['bg_color'] = '{ "sRGB nonlinear" 0.4 0.4 0.4 }'
+			self.attr['floor:color'] = '0.133 0.133 0.133'
+		elif index == 4:
+			self.attr['bg_color'] = '{ "sRGB nonlinear" 0.2 0.2 0.2 }'
+			self.attr['floor:color'] = '0.033 0.033 0.033'
+		elif index >= 5:
+			self.attr['bg_color'] = '{ "sRGB nonlinear" 0 0 0 }'
+			self.attr['floor:color'] = '0 0 0'
+
+
+	def setFloorShader(self, shader):
+		if shader == 'diff':
+			self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype diffuse\n\tdiff %s\n}\n' % (self.attr['floor:color'])
+		elif shader == 'glass':
+			self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype glass\n\teta 1.33\n\tcolor  1 1 1\n\tabsorbtion.distance 5.0\n}\n' 
+		elif shader == 'mirror':
+			self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype mirror\n\trefl 1 1 1\n}\n' 
+		elif shader == 'shiny':
+			self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype shiny\n\tdiff { "sRGB nonlinear" %s }\n\trefl 0.5\n}\n' % (self.attr['floor:color'])
+		elif shader == 'phong':
+			self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype phong\n\tdiff { "sRGB linear" %s }\n\tspec { "sRGB linear" %s } 50\n\tsamples 4\n}\n' % (self.attr['floor:color'], self.attr['floor:color'])
+
+
 	def SCString(self):
 		#image {
 		#	resolution 1280 959
@@ -82,7 +125,7 @@ class Image:
 		#background {
 		#	color  { "sRGB nonlinear" 1.0 1.0 1.0 }
 		#}		
-		bgStr = 'background {\n\tcolor %s\n}' % (self.attr['color'])
+		bgStr = 'background {\n\tcolor %s\n}' % (self.attr['bg_color'])
 		return ('%s\n%s\n%s\n%s\n') % (imageStr, traceDepthsStr, giStr, bgStr)		
 	
 	def floorSCString(self):
@@ -92,4 +135,4 @@ class Image:
 		#	p 0.000000 -11.743686 0.000000
 		#	n 0 1 0
 		#}	
-		return ('object {\n\tshader floor\n\ttype plane\n\tp %f %f %f\n\tn %s\n}\n') % (self.attr['floor:p'][0], self.attr['floor:p'][1], self.attr['floor:p'][2], self.attr['floor:n'])
+		return self.attr['floor:shader'] + ('object {\n\tshader floor\n\ttype plane\n\tp %f %f %f\n\tn %s\n}\n') % (self.attr['floor:p'][0], self.attr['floor:p'][1], self.attr['floor:p'][2], self.attr['floor:n'])
