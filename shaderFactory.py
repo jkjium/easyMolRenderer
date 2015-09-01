@@ -74,5 +74,5 @@ class ShaderFactory:
  	#	power float 50.0
  	#	samples int 4
 	#}
-		return 'shader {\n\tname %s\n\ttype phong\n\tdiff { "sRGB linear" %s }\n\tspec { "sRGB linear" %s } 50\n\tsamples 4\n}\n' % (self.ShaderNames[color_id], color_id, color_id)
+		return 'shader {\n\tname %s\n\ttype phong\n\tdiff { "sRGB linear" %s }\n\tspec { "sRGB linear" %s } 80\n\tsamples 4\n}\n' % (self.ShaderNames[color_id], color_id, color_id)
 

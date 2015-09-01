@@ -58,7 +58,7 @@ def parseCamera(entry): #camera {direction<0.0,0.0,  -2.835>  location <0.0 , 0.
 			print 'globalCameraUpIndex: %d\n' % globalCamera.upIndex 
 			break
 	target = '\ttarget 0.0 0.0 -57.8435' # change later
-	width = 1280
+	width = globalImage.outputWidth
 	height = width/float(aspect)
 	globalImage.attr['resolution'] = '%d %d' % (width, height)
 	

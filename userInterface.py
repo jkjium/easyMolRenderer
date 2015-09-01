@@ -9,6 +9,7 @@ class UserInterface:
 		self.floorShader = 'diff'
 		self.globalShader = 'diff'
 		self.floorShadow = 1
+		self.outputWidth = 1280
 
 		# read parameters
 		print 'mode: %d' % (mode)
@@ -20,6 +21,7 @@ class UserInterface:
 		self.image.setFloorShader(self.floorShader)
 		self.image.setGlobalShader(self.globalShader)
 		self.image.setFloorShadow(self.floorShadow)
+		self.image.setOutputWidth(self.outputWidth)
 
 	def parseCFG(self):
 		print 'parsing config ...\n'
@@ -46,6 +48,9 @@ class UserInterface:
 			elif 'floorShadow' == keyvalue[0]:
 				self.floorShadow = int(keyvalue[1])
 				print 'set floorShadow: %s\n' % keyvalue[1]
+			elif 'outputWidth' == keyvalue[0]:
+				self.outputWidth = int(keyvalue[1])
+				print 'set outputWidth: %s\n' % keyvalue[1]
 
 
 		cfg.close()

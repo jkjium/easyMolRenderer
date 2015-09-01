@@ -58,9 +58,13 @@ class Image:
 		self.attr['floor:n'] = '0 1 0' # determined by camera.up attribute
 		self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype diffuse\n\tdiff 1.0 1.0 1.0\n}\n'
 		self.floorShadow = 1
+		self.outputWidth = 1280
 
 		# global shader
 		self.attr['globalShader'] = 'diff'
+
+	def setOutputWidth(self, width):
+		self.outputWidth = width
 
 	def setFloorShadow(self, flag):
 		self.floorShadow = flag
