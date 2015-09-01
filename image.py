@@ -53,15 +53,17 @@ class Image:
 		self.attr['floor:color'] = '1.0 1.0 1.0'
 		
 		# floor
-		self.floor = True
 		self.floorHeight = float('inf')
 		self.attr['floor:p'] = [0.0, 0.0, 0.0] # to be adjust according to the minimum point
 		self.attr['floor:n'] = '0 1 0' # determined by camera.up attribute
 		self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype diffuse\n\tdiff 1.0 1.0 1.0\n}\n'
+		self.floorShadow = 1
 
 		# global shader
 		self.attr['globalShader'] = 'diff'
 
+	def setFloorShadow(self, flag):
+		self.floorShadow = flag
 
 	def setGlobalShader(self, shader):
 		self.attr['globalShader'] = shader
@@ -129,10 +131,13 @@ class Image:
 		return ('%s\n%s\n%s\n%s\n') % (imageStr, traceDepthsStr, giStr, bgStr)		
 	
 	def floorSCString(self):
+		if self.floorShadow == 0:
+			return ''
+		else:
 		#object {
 		#	shader floor
 		#	type plane
 		#	p 0.000000 -11.743686 0.000000
 		#	n 0 1 0
 		#}	
-		return self.attr['floor:shader'] + ('object {\n\tshader floor\n\ttype plane\n\tp %f %f %f\n\tn %s\n}\n') % (self.attr['floor:p'][0], self.attr['floor:p'][1], self.attr['floor:p'][2], self.attr['floor:n'])
+			return self.attr['floor:shader'] + ('object {\n\tshader floor\n\ttype plane\n\tp %f %f %f\n\tn %s\n}\n') % (self.attr['floor:p'][0], self.attr['floor:p'][1], self.attr['floor:p'][2], self.attr['floor:n'])
