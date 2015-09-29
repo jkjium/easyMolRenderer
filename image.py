@@ -1,3 +1,4 @@
+import math
 from collections import OrderedDict
 #%bucket 64 hilbert #A larger bucket size means more RAM usage and less time rendering.
 #image {
@@ -55,13 +56,21 @@ class Image:
 		# floor
 		self.floorHeight = float('inf')
 		self.attr['floor:p'] = [0.0, 0.0, 0.0] # to be adjust according to the minimum point
-		self.attr['floor:n'] = '0 1 0' # determined by camera.up attribute
+		self.attr['floor:n'] = [0.0, 1.0, 0.0] # determined by camera.up attribute
 		self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype diffuse\n\tdiff 1.0 1.0 1.0\n}\n'
+
 		self.floorShadow = 1
 		self.outputWidth = 1280
+		self.floorAngle = 0.0
+
+		self.minHeight = float('inf')
+		self.lowestPoint = [0.0, 0.0, 0.0]
 
 		# global shader
 		self.attr['globalShader'] = 'diff'
+
+	def setFloorAngle(self, angle):
+		self.floorAngle = angle
 
 	def setOutputWidth(self, width):
 		self.outputWidth = width
@@ -72,25 +81,8 @@ class Image:
 	def setGlobalShader(self, shader):
 		self.attr['globalShader'] = shader
 
-	def setBGGrayScale(self, index):
-		if index == 0:
-			self.attr['bg_color'] = '{ "sRGB nonlinear" 1.0 1.0 1.0 }'
-			self.attr['floor:color'] = '1.0 1.0 1.0'
-		elif index == 1:
-			self.attr['bg_color'] = '{ "sRGB nonlinear" 0.8 0.8 0.8 }'
-			self.attr['floor:color'] = '0.605 0.605 0.605'
-		elif index == 2:
-			self.attr['bg_color'] = '{ "sRGB nonlinear" 0.6 0.6 0.6 }'
-			self.attr['floor:color'] = '0.32 0.32 0.32'
-		elif index == 3:
-			self.attr['bg_color'] = '{ "sRGB nonlinear" 0.4 0.4 0.4 }'
-			self.attr['floor:color'] = '0.133 0.133 0.133'
-		elif index == 4:
-			self.attr['bg_color'] = '{ "sRGB nonlinear" 0.2 0.2 0.2 }'
-			self.attr['floor:color'] = '0.033 0.033 0.033'
-		elif index >= 5:
-			self.attr['bg_color'] = '{ "sRGB nonlinear" 0 0 0 }'
-			self.attr['floor:color'] = '0 0 0'
+	def setFloorColor(self, color):
+		self.attr['floor:color'] = color
 
 
 	def setFloorShader(self, shader):
@@ -105,7 +97,21 @@ class Image:
 		elif shader == 'phong':
 			self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype phong\n\tdiff { "sRGB linear" %s }\n\tspec { "sRGB linear" %s } 50\n\tsamples 4\n}\n' % (self.attr['floor:color'], self.attr['floor:color'])
 
+	# assume Y is the up axis
+	# all the points rotate negative floorAngle to find the lowest height (Y) by applying rotx
+	#   old point = [a, b, c]
+	#	new point = [a, b*cos(x)+(-1)*c*sin(x), b*sin(x)+c*cos(x)]
+	# point in original coordinate system will be recorded
+	def checkLowestPoint(self, cp):
+		np = [cp[0], cp[1]*math.cos(math.radians(-1*self.floorAngle)) + (-1)*cp[2]*math.sin(math.radians(-1*self.floorAngle)), cp[1]*math.sin(math.radians(-1*self.floorAngle)) + cp[2]*math.cos(math.radians(-1*self.floorAngle))]
+		if np[1] < self.floorHeight:
+			self.floorHeight = np[1]
+			self.lowestPoint[0] = cp[0]
+			self.lowestPoint[1] = cp[1]
+			self.lowestPoint[2] = cp[2]
 
+
+	# output SC strings
 	def SCString(self):
 		#image {
 		#	resolution 1280 959
@@ -131,7 +137,8 @@ class Image:
 		#background {
 		#	color  { "sRGB nonlinear" 1.0 1.0 1.0 }
 		#}		
-		bgStr = 'background {\n\tcolor %s\n}' % (self.attr['bg_color'])
+#		bgStr = 'background {\n\tcolor %s\n}' % (self.attr['bg_color'])
+		bgStr = 'background {\n\tcolor %s\n}' % ('.5 .5 .5')
 		return ('%s\n%s\n%s\n%s\n') % (imageStr, traceDepthsStr, giStr, bgStr)		
 	
 	def floorSCString(self):
@@ -144,4 +151,10 @@ class Image:
 		#	p 0.000000 -11.743686 0.000000
 		#	n 0 1 0
 		#}	
-			return self.attr['floor:shader'] + ('object {\n\tshader floor\n\ttype plane\n\tp %f %f %f\n\tn %s\n}\n') % (self.attr['floor:p'][0], self.attr['floor:p'][1], self.attr['floor:p'][2], self.attr['floor:n'])
+			self.attr['floor:n'][1] = math.cos(math.radians(self.floorAngle))
+			self.attr['floor:n'][2] = math.sin(math.radians(self.floorAngle))
+
+			self.attr['floor:p'][0] = self.lowestPoint[0]
+			self.attr['floor:p'][1] = self.lowestPoint[1] - 2
+			self.attr['floor:p'][2] = self.lowestPoint[2]
+			return self.attr['floor:shader'] + ('object {\n\tshader floor\n\ttype plane\n\tp %f %f %f\n\tn %f %f %f\n}\n') % (self.attr['floor:p'][0], self.attr['floor:p'][1], self.attr['floor:p'][2], self.attr['floor:n'][0], self.attr['floor:n'][1], self.attr['floor:n'][2])

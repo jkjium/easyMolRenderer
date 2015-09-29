@@ -17,7 +17,7 @@ from userInterface import UserInterface
 #  aspect 1.3333333735
 #}
 # extract: eye, target, up, aspect
-def parseCamera(entry): #camera {direction<0.0,0.0,  -2.835>  location <0.0 , 0.0 , 0.0>  right 1.3333333735*x up y   } 
+def parseCamera(entry, ui): #camera {direction<0.0,0.0,  -2.835>  location <0.0 , 0.0 , 0.0>  right 1.3333333735*x up y   } 
 	global globalCamera
 	global globalImage
 
@@ -46,15 +46,15 @@ def parseCamera(entry): #camera {direction<0.0,0.0,  -2.835>  location <0.0 , 0.
 			if entry[i]=='x':
 				up = '1.0 0.0 0.0'
 				globalCamera.upIndex = 0
-				globalImage.attr['floor:n'] = '1 0 0'
+				globalImage.attr['floor:n'] = [1.0, 0.0, 0.0]
 			elif entry[i] == 'y':
 				up = '0.0 1.0 0.0'
 				globalCamera.upIndex = 1
-				globalImage.attr['floor:n'] = '0 1 0'				
+				globalImage.attr['floor:n'] = [0.0, 1.0, 0.0]
 			else:
 				up = '0.0 0.0 1.0'
 				globalCamera.upIndex = 2
-				globalImage.attr['floor:n'] = '0 0 1'				
+				globalImage.attr['floor:n'] = [0.0, 0.0, 1.0]
 			print 'globalCameraUpIndex: %d\n' % globalCamera.upIndex 
 			break
 	target = '\ttarget 0.0 0.0 -57.8435' # change later
@@ -73,7 +73,7 @@ def parseCamera(entry): #camera {direction<0.0,0.0,  -2.835>  location <0.0 , 0.
 	
 	return globalImage.SCString()+globalCamera.SCString()
 
-def parseDefault(entry):
+def parseDefault(entry, ui):
 	return ''
 	
 # light_source{<4000.0001,4000.0001,9786.1221>  rgb<1.0,1.0,1.0>}	
@@ -83,7 +83,7 @@ def parseDefault(entry):
 #	power 100.0
 #	p 1.0 3.0 6.0
 #}
-def parseLightSource(entry):
+def parseLightSource(entry, ui):
 	#print 'parsing Light ...'
 	N=len(entry)
 
@@ -104,11 +104,10 @@ def parseLightSource(entry):
 	return 'light {\n\ttype point\n\tcolor { "sRGB nonlinear" %s }\n\tpower 100.0\n\tp %s\n}\n' % (color, point)
 
 	
-def parsePlane(entry):
+def parsePlane(entry, ui):
 	return ''
 
-def parseMesh2(entry):
-	global globalFloorMin
+def parseMesh2(entry, ui):
 	global globalImage
 	global globalShaderFactory
 
@@ -136,10 +135,7 @@ def parseMesh2(entry):
 			sfVectors=sfVectors+'\t\t'+point+'\n'
 			
 			# for finding the lowest point
-			pArray = point.split(' ')
-			height = float(pArray[globalCamera.upIndex])
-			if height < globalFloorMin:
-				globalFloorMin = height
+			ui.checkLowestPoint(point.split(' '))
 
 			#print point
 	endPoint = j
@@ -213,7 +209,7 @@ def parseMesh2(entry):
 #  c 45 -30 21
 #  r 20
 #}
-def parseSphere(entry): #sphere{<-2.9441969395,3.6968467236,-80.1707839966>, 1.2000000477 pigment{color rgb<1.0000,0.2824,0.0000>}}
+def parseSphere(entry, ui): #sphere{<-2.9441969395,3.6968467236,-80.1707839966>, 1.2000000477 pigment{color rgb<1.0000,0.2824,0.0000>}}
 	global globalFloorMin
 	global globalShaderFactory
 	N=len(entry)
@@ -233,12 +229,7 @@ def parseSphere(entry): #sphere{<-2.9441969395,3.6968467236,-80.1707839966>, 1.2
 		if entry[i]=='>':
 			center = entry[centerIdx+1:i].replace(',',' ')
 			# for finding the lowest point
-			pArray = center.split(' ')
-			height = float(pArray[globalCamera.upIndex])
-			if height < globalFloorMin:
-				globalFloorMin = height	
-			
-			#print center
+			ui.checkLowestPoint(center.split(' '))
 			break
 	endPoint = i
 	# read radius
@@ -286,7 +277,7 @@ def parseSphere(entry): #sphere{<-2.9441969395,3.6968467236,-80.1707839966>, 1.2
 	#return '\nobject {\n\t'+sfShader+'\n\ttype sphere\n\tc '+center+'\n\tr '+radius+'\n}'
 	return ('\nobject {\n\tshader %s\n\ttype sphere\n\tc %s\n\tr %s\n}') % (sfShader, center, radius)
 
-def parseCylinder(entry): #cylinder{<0.0390287824,-1.5336283445,-27.3909511566>, <0.0660662426,-1.1014350308,-27.9811739975>, 0.2500000000 open pigment{color rgb<0.20001,0.2000,1.0000>}}
+def parseCylinder(entry, ui): #cylinder{<0.0390287824,-1.5336283445,-27.3909511566>, <0.0660662426,-1.1014350308,-27.9811739975>, 0.2500000000 open pigment{color rgb<0.20001,0.2000,1.0000>}}
 	global globalShaderFactory
 	N=len(entry)
 	vertexIdx = entry.find('vertex_vectors')
@@ -435,7 +426,7 @@ def main():
 		for key in dispatch.keys():
 			if key in line[0:15]:
 				count+=1
-				globalSCString[key].append(dispatch[''.join(key)](line))
+				globalSCString[key].append(dispatch[''.join(key)](line, UI))
 				if count%1000==0:
 					print str(count)+' primitives parsed ...'
 	t2 = time.time()
@@ -444,17 +435,13 @@ def main():
 	print 'Writing SC information ...'
 
 	
-	#shaderFloor = 'shader {\n\tname floor\n\ttype diffuse\n\tdiff 1.0 1.0 1.0\n}\n'
 	fout=open('output.sc','w')
 
 	fout.write(''.join(globalSCString['camera']))
 #	fout.write(''.join(globalSCString['light_source']))
 	fout.write(globalShaderFactory.SCString(globalImage.attr['globalShader']))
 
-	print 'Lowest point: [%f]' % (globalFloorMin)
-	globalImage.attr['floor:p'][globalCamera.upIndex] = globalFloorMin-2
-	print 'Adjusted lowest point: [%f]\n' % (globalFloorMin-2)
-	#fout.write(shaderFloor)
+	print 'ui Lowest point: [%f]' % (UI.image.floorHeight)
 	fout.write(globalImage.floorSCString())
 	
 	fout.write(''.join(globalSCString['mesh2']))
