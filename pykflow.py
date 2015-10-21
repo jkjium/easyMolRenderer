@@ -7,6 +7,7 @@ import tkFileDialog
 import Pmw
 import tkColorChooser
 from pymol.cgo import *
+from pymol import cmd
 
 
 try:
@@ -49,48 +50,63 @@ class pyKFlowPlugin:
                           foreground='#dbd1a1',
                           #pady = 20,
                           )
-		w.pack(expand = 1, fill = 'both', padx = 10, pady = 2)
+		w.pack(expand = 1, fill = 'both', padx = 2, pady = 2)
 
 		self.notebook = Pmw.NoteBook(self.dialog.interior())
-		self.notebook.pack(fill='both', expand=1, padx=10, pady=5)
+		self.notebook.pack(fill='both', expand=1, padx=2, pady=5)
 
 		tab_main = self.notebook.add('Main')
 		self.notebook.tab('Main').focus_set()
 		labelFrame_scene = Tkinter.LabelFrame(tab_main, text='Scene')
-		labelFrame_scene.pack(fill='both', expand = True, padx = 10, pady = 5)
+		labelFrame_scene.pack(fill='both', expand = True, padx = 2, pady = 5)
+		#labelFrame_scene.grid()
 
+		self.label_img = Tkinter.Label(labelFrame_scene, text='image')
+		self.label_img.grid(sticky='w', row=0, column=0, padx=5, pady=3)
 		# image width
 		entryField_imageWidth = Pmw.EntryField(labelFrame_scene, 
 									label_text='Image Width:', 
-									labelpos='ws', value='2560', 
+									labelpos='w', value='2560', 
 									entry_textvariable=self.varImageWidth)
-		entryField_imageWidth.grid(sticky='w', row=0, column = 1, columnspan=2, padx =5 , pady=5)
+		entryField_imageWidth.grid(sticky='w', row=0, column = 1, columnspan=2, padx =5 , pady=3)
 
 		# floor switch / drop shadow checkbox 
 		checkbox_dropShadow = Tkinter.Checkbutton(labelFrame_scene, text = 'Drop Shadow', variable = self.dropShadow)
 		checkbox_dropShadow.select()
-		checkbox_dropShadow.grid(sticky = 'e', row =1, column =1, padx=3, pady=5)
+		checkbox_dropShadow.grid(sticky='w', row =2, column =1, columnspan=2, padx=5, pady=3)
 
 		# background color selector
 		label_bgColor = Tkinter.Label(labelFrame_scene, text='Background Color:')
-		label_bgColor.grid(sticky='e', row=2, column=1)
+		label_bgColor.grid(sticky='w', row=1, column=1, padx=5, pady=3)
 		self.bt_bgColor = Tkinter.Button(labelFrame_scene, bg='white', command = self.setbgColor, width=12)
-		self.bt_bgColor.grid(sticky='w', row=2, column=2, padx=0, pady=0)
+		self.bt_bgColor.grid(sticky='we',row=1, column=2, padx=5, pady=3)
 
 		# scene angle (if drop shadow is set to true)
 		label_stageAngle = Tkinter.Label(labelFrame_scene, text='Stage Angle:')
-		label_stageAngle.grid(sticky='e', row=3, column=1, padx=5, pady=3)
-		self.scale_stageAngle = Tkinter.Scale(labelFrame_scene, from_=10.0, to=90.0, resolution=1.0, orient = Tkinter.HORIZONTAL, command = self.changeStageAngle)
+		label_stageAngle.grid(sticky='w', row=3, column=1, padx=5, pady=3)
+		self.scale_stageAngle = Tkinter.Scale(labelFrame_scene, length= 80, 
+							from_=10.0, to=90.0, resolution=1.0, orient = Tkinter.HORIZONTAL, 
+							command = self.changeStageAngle)
 		self.scale_stageAngle.set(10.0)
-		self.scale_stageAngle.grid(sticky='e', row=3, column=2, padx=5, pady=3)
+		self.scale_stageAngle.grid(sticky='we', row=3, column=2, padx=5, pady=3)
+
+		# optionMenu for shader
+		self.optionMenu_shader = Pmw.OptionMenu(labelFrame_scene, labelpos='w', label_text='Molecule Shader:', items=('Diff','Phong','Shiny','Glass'), initialitem = 'Diff')
+		self.optionMenu_shader.grid(sticky='we', row=4, column=1, columnspan=2, padx=5, pady=3)
+
+		# optionMenu for ground shader
+		self.optionMenu_bgShader = Pmw.OptionMenu(labelFrame_scene, labelpos='w', label_text='Background Shader:', items=('Diff','Phong','Shiny','Glass'), initialitem = 'Diff')
+		self.optionMenu_bgShader.grid(sticky='we', row=5, column=1, columnspan=2, padx=5, pady=3)
+
 
 		print self.varImageWidth.get()
 
-
-	# main window event dispatcher
+ # main window event dispatcher
 	def execute(self, event):
 		if event == 'Exit':
 			self.quit()
+		elif event == 'Render':
+			self.render()
 
 	# distroy main window
 	def quit(self):
@@ -103,6 +119,7 @@ class pyKFlowPlugin:
 			colorTuple, color = tkColorChooser.askcolor()
 			if colorTuple is not None and color is not None:
 				self.bt_bgColor.config(bg=color)
+				self.bgColor = color
 
 		except Tkinter._tkinter.TclError:
 			self.bgColor = [1,1,1]		
@@ -111,3 +128,11 @@ class pyKFlowPlugin:
 		self.stageAngle = int(value)
 
 
+	def render(self):
+		#cmd.do('save t.pov')
+		print 'image width: %d' % (int(self.varImageWidth.get()))
+		print 'drop shadow: %s' % self.dropShadow.get()
+		print 'bg color: %s' % (str(self.bgColor))
+		print 'stage angle: %d' % (self.stageAngle)
+		print 'molecule shader: %s' % self.optionMenu_shader.getvalue()
+		print 'background shader: %s' % self.optionMenu_bgShader.getvalue()
