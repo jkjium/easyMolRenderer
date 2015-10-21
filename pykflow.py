@@ -1,5 +1,6 @@
 import warnings
 import os 
+import subprocess
 import Tkinter
 import tkSimpleDialog
 import tkMessageBox
@@ -136,3 +137,20 @@ class pyKFlowPlugin:
 		print 'stage angle: %d' % (self.stageAngle)
 		print 'molecule shader: %s' % self.optionMenu_shader.getvalue()
 		print 'background shader: %s' % self.optionMenu_bgShader.getvalue()
+		path=os.path.dirname(__file__)+'\\renderer.jar'
+		path=path.replace(' ', '\" \"')
+		print path
+		p=subprocess.Popen('java -jar '+path+' ipr', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		#while True:
+		#	out = p.stderr.read(1)
+		#	if out == '' and p.poll() != None:
+		#		break
+		#	if out!='':
+		#		sys.stdout.write(out)
+		#		sys.stdout.flush()
+		#while p.poll() is None:
+		#	print p.stdout.readline()
+		#	print p.stderr.readline()
+		p_stdout, p_stderr = p.communicate()
+		print p_stdout
+		print p_stderr
