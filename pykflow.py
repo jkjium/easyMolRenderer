@@ -50,18 +50,18 @@ class pyKFlowPlugin:
                           foreground='#dbd1a1',
                           #pady = 20,
                           )
-		w.pack(expand = 1, fill = 'both', padx = 2, pady = 2)
+		w.pack(fill = 'both', expand=True, padx = 10, pady = 2)
 
 		self.notebook = Pmw.NoteBook(self.dialog.interior())
-		self.notebook.pack(fill='both', expand=1, padx=2, pady=5)
+		self.notebook.pack(fill='both', expand=True, padx=10, pady=10)
 
 		tab_main = self.notebook.add('Main')
 		self.notebook.tab('Main').focus_set()
 		labelFrame_scene = Tkinter.LabelFrame(tab_main, text='Scene')
-		labelFrame_scene.pack(fill='both', expand = True, padx = 2, pady = 5)
+		labelFrame_scene.pack(fill='both', expand = True, padx = 10, pady = 5)
 		#labelFrame_scene.grid()
 
-		self.label_img = Tkinter.Label(labelFrame_scene, text='image')
+		self.label_img = Tkinter.Label(labelFrame_scene, text='Option description --------')
 		self.label_img.grid(sticky='w', row=0, column=0, padx=5, pady=3)
 		# image width
 		entryField_imageWidth = Pmw.EntryField(labelFrame_scene, 
@@ -130,12 +130,19 @@ class pyKFlowPlugin:
 
 	def render(self):
 		#cmd.do('save t.pov')
+		#if self.ImageWidth.get() == '' :
+
 		print 'image width: %d' % (int(self.varImageWidth.get()))
 		print 'drop shadow: %s' % self.dropShadow.get()
 		print 'bg color: %s' % (str(self.bgColor))
 		print 'stage angle: %d' % (self.stageAngle)
 		print 'molecule shader: %s' % self.optionMenu_shader.getvalue()
 		print 'background shader: %s' % self.optionMenu_bgShader.getvalue()
+
+		(pov_header, pov_body) = cmd.get_povray()
+		pov_str = ''.join([pov_header, pov_body]).replace('\n', ' ').replace('\r', '')
+
+		print pov_str
 
 		# cmd="java -jar kflow.jar -v 0 -o out.png output.sc" 
 		path=os.path.dirname(__file__)+'/kflow.jar'
@@ -152,7 +159,7 @@ class pyKFlowPlugin:
 		#path_java = '\"C:/Users/kjia/kflow.jar\"'
 		print path_java
 		#path_jave = 'kflow.jar'
-		p=subprocess.Popen('java -jar '+path_java+' '+cmd_args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		'''p=subprocess.Popen('java -jar '+path_java+' '+cmd_args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		#p=subprocess.Popen('java -jar '+path+' '+cmd_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
 		while True:
@@ -161,4 +168,4 @@ class pyKFlowPlugin:
 				break
 			if out!='':
 				sys.stdout.write(out)
-				sys.stdout.flush()
+				sys.stdout.flush()'''
