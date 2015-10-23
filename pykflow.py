@@ -7,7 +7,6 @@ import tkMessageBox
 import tkFileDialog
 import Pmw
 import tkColorChooser
-from pymol.cgo import *
 from pymol import cmd
 
 
@@ -100,14 +99,14 @@ class pyKFlowPlugin:
 		self.optionMenu_bgShader.grid(sticky='we', row=5, column=1, columnspan=2, padx=5, pady=3)
 
 
-		print self.varImageWidth.get()
-
  # main window event dispatcher
 	def execute(self, event):
 		if event == 'Exit':
 			self.quit()
 		elif event == 'Render':
 			self.render()
+		else:
+			self.quit()
 
 	# distroy main window
 	def quit(self):
@@ -137,20 +136,29 @@ class pyKFlowPlugin:
 		print 'stage angle: %d' % (self.stageAngle)
 		print 'molecule shader: %s' % self.optionMenu_shader.getvalue()
 		print 'background shader: %s' % self.optionMenu_bgShader.getvalue()
-		path=os.path.dirname(__file__)+'\\renderer.jar'
-		path=path.replace(' ', '\" \"')
-		print path
-		p=subprocess.Popen('java -jar '+path+' ipr', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-		#while True:
-		#	out = p.stderr.read(1)
-		#	if out == '' and p.poll() != None:
-		#		break
-		#	if out!='':
-		#		sys.stdout.write(out)
-		#		sys.stdout.flush()
-		#while p.poll() is None:
-		#	print p.stdout.readline()
-		#	print p.stderr.readline()
-		p_stdout, p_stderr = p.communicate()
-		print p_stdout
-		print p_stderr
+
+		# cmd="java -jar kflow.jar -v 0 -o out.png output.sc" 
+		path=os.path.dirname(__file__)+'/kflow.jar'
+		path_java=path.replace(' ', '\" \"')
+		path_java='\"'+path.replace('\\', '/')+'\"'
+
+		print os.path.isfile(path)
+		#path='kflow.jar'
+		print os.path.isfile(path_java)
+
+		cmd_args = '-v 3 -o output.png output.sc' 
+		print 'start rendering ...'
+		#path_java = '\"C:/Users/kjia/workspace/python/easyMolRenderer/sunflow/kflow.jar\"'
+		#path_java = '\"C:/Users/kjia/kflow.jar\"'
+		print path_java
+		#path_jave = 'kflow.jar'
+		p=subprocess.Popen('java -jar '+path_java+' '+cmd_args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		#p=subprocess.Popen('java -jar '+path+' '+cmd_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+		while True:
+			out = p.stdout.read(1)
+			if out == '' and p.poll() != None:
+				break
+			if out!='':
+				sys.stdout.write(out)
+				sys.stdout.flush()
