@@ -286,7 +286,7 @@ class Image:
 		#	color  { "sRGB nonlinear" 1.0 1.0 1.0 }
 		#}		
 #		bgStr = 'background {\n\tcolor %s\n}' % (self.attr['bg_color'])
-		bgStr = 'background {\n\tcolor %s\n}' % ('.5 .5 .5')
+		bgStr = 'background {\n\tcolor %s\n}' % ('1.0 1.0 1.0')
 		return ('%s\n%s\n%s\n%s\n') % (imageStr, traceDepthsStr, giStr, bgStr)		
 	
 	def floorSCString(self):
@@ -648,11 +648,9 @@ class pyKFlowPlugin:
 		self.parent = app.root
 		self.dialog = Pmw.Dialog(self.parent,
 							buttons = ('Render IPR',
-										'Render',
-										'Reset',
-										'test',
-										'test1',
-										'test2',
+										'Render Full',
+										'Save Povray',
+										'Reset Default',
 										'Exit'),
 							title = 'pyKFlow -- Sunflow Plugin for Pymol',
 							defaultbutton = 'Render IPR',
@@ -677,7 +675,10 @@ class pyKFlowPlugin:
 		labelFrame_scene.pack(fill='both', expand = True, padx = 10, pady = 5)
 		#labelFrame_scene.grid()
 
-		self.label_img = Tkinter.Label(labelFrame_scene, text='Option description --------')
+		self.console = Tkinter.StringVar()
+		self.console.set('%28s' % ('pykflow initialized'))
+		self.label_img = Tkinter.Label(labelFrame_scene, textvariable=self.console, foreground='#08194d')
+		#self.label_img = Tkinter.Label(labelFrame_scene, text='Option description --------')
 		self.label_img.grid(sticky='w', row=0, column=0, padx=5, pady=3)
 		# image width
 		entryField_imageWidth = Pmw.EntryField(labelFrame_scene, 
@@ -707,11 +708,16 @@ class pyKFlowPlugin:
 		self.scale_stageAngle.grid(sticky='we', row=3, column=2, padx=5, pady=3)
 
 		# optionMenu for shader
-		self.optionMenu_shader = Pmw.OptionMenu(labelFrame_scene, labelpos='w', label_text='Molecule Shader:', items=('Diff','Phong','Shiny','Glass','Mirror'), initialitem = 'Diff')
+		self.globalShader = Tkinter.StringVar()
+		self.globalShader.set('Diff')
+#		self.optionMenu_shader = Pmw.OptionMenu(labelFrame_scene, labelpos='w', label_text='Molecule Shader:', menubutton_textvariable=self.globalShader, items=('Diff','Phong','Shiny','Glass','Mirror'), initialitem = 'Diff')
+		self.optionMenu_shader = Pmw.OptionMenu(labelFrame_scene, labelpos='w', label_text='Molecule Shader:', menubutton_textvariable=self.globalShader, items=('Diff','Phong','Shiny','Glass','Mirror'))
 		self.optionMenu_shader.grid(sticky='we', row=4, column=1, columnspan=2, padx=5, pady=3)
 
 		# optionMenu for ground shader
-		self.optionMenu_bgShader = Pmw.OptionMenu(labelFrame_scene, labelpos='w', label_text='Background Shader:', items=('Diff','Phong','Shiny','Glass', 'Mirror'), initialitem = 'Diff')
+		self.bgShader = Tkinter.StringVar()
+		self.bgShader.set('Diff')
+		self.optionMenu_bgShader = Pmw.OptionMenu(labelFrame_scene, labelpos='w', label_text='Background Shader:', menubutton_textvariable=self.bgShader, items=('Diff','Phong','Shiny','Glass', 'Mirror'))
 		self.optionMenu_bgShader.grid(sticky='we', row=5, column=1, columnspan=2, padx=5, pady=3)
 
 
@@ -719,10 +725,14 @@ class pyKFlowPlugin:
 	def execute(self, event):
 		if event == 'Exit':
 			self.quit()
-		elif event == 'Render':
+		elif event == 'Render Full':
 			self.render('')
 		elif event == 'Render IPR':
 			self.render('-ipr')
+		elif event == 'Save Povray':
+			self.savePov()
+		elif event == 'Reset Default':
+			self.resetScene()
 		else:
 			self.quit()
 
@@ -740,7 +750,7 @@ class pyKFlowPlugin:
 				self.bgColor = '%f %f %f' % (colorTuple[0]/256.0, colorTuple[1]/256.0, colorTuple[2]/256.0)
 
 		except Tkinter._tkinter.TclError:
-			self.bgColor = '.5 .5 .5'
+			self.bgColor = '1.0 1.0 1.0'
 
 	def changeStageAngle(self, value):
 		self.stageAngle = int(value)
@@ -758,6 +768,23 @@ class pyKFlowPlugin:
 			print 'copy kflow.jar into your HOME dir...'
 			shutil.copy(filePath, destPath)
 		return
+
+	def resetScene(self):
+		self.varImageWidth.set('2560')
+		self.dropShadow.set(True)
+		self.scale_stageAngle.set(10.0)
+		self.changeStageAngle(10.0)
+		self.globalShader.set('Diff')
+		self.bgShader.set('Diff')
+		self.console.set('%28s' % ('Scene reset.'))
+
+	def savePov(self):
+		cmd.do('save scene.pov')
+		self.console.set('%28s' % ('Povray file saved.'))
+		#fout = open('output.pov', 'w')
+		#fout.write(''.join([pov_header, pov_body]))
+		#fout.close()
+		#self.label_img()
 
 
 	def render(self, renderType):
@@ -782,8 +809,10 @@ class pyKFlowPlugin:
 		self.p.globalImage.setGlobalShader(self.optionMenu_shader.getvalue())
 		self.p.globalImage.setFloorShadow(self.dropShadow.get())
 		if renderType == '':	
+			self.console.set('%28s' % ('Full Render'))
 			self.p.globalImage.setOutputWidth(int(self.varImageWidth.get()))
 		else:
+			self.console.set('%28s' % ('Render IPR'))
 			self.p.globalImage.setOutputWidth(800)
 		self.p.globalImage.setFloorAngle(self.stageAngle)		
 		self.p.parsePov(''.join([pov_header, pov_body]))
