@@ -649,7 +649,7 @@ class pyKFlowPlugin:
 		self.dialog = Pmw.Dialog(self.parent,
 							buttons = ('Render IPR',
 										'Render Full',
-										'Save Povray',
+										'Save SC',
 										'Reset Default',
 										'Exit'),
 							title = 'pyKFlow -- Sunflow Plugin for Pymol',
@@ -729,8 +729,8 @@ class pyKFlowPlugin:
 			self.render('')
 		elif event == 'Render IPR':
 			self.render('-ipr')
-		elif event == 'Save Povray':
-			self.savePov()
+		elif event == 'Save SC':
+			self.saveSC()
 		elif event == 'Reset Default':
 			self.resetScene()
 		else:
@@ -778,13 +778,18 @@ class pyKFlowPlugin:
 		self.bgShader.set('Diff')
 		self.console.set('%28s' % ('Scene reset.'))
 
-	def savePov(self):
-		cmd.do('save scene.pov')
-		self.console.set('%28s' % ('Povray file saved.'))
-		#fout = open('output.pov', 'w')
-		#fout.write(''.join([pov_header, pov_body]))
-		#fout.close()
-		#self.label_img()
+	def saveSC(self):
+		(pov_header, pov_body) = cmd.get_povray()
+		self.p = pov()
+		self.p.globalImage.setFloorColor(self.bgColor)
+		self.p.globalImage.setFloorShader(self.optionMenu_bgShader.getvalue())
+		self.p.globalImage.setGlobalShader(self.optionMenu_shader.getvalue())
+		self.p.globalImage.setFloorShadow(self.dropShadow.get())
+		self.p.globalImage.setOutputWidth(int(self.varImageWidth.get()))
+		self.p.globalImage.setFloorAngle(self.stageAngle)		
+		self.p.parsePov(''.join([pov_header, pov_body]))		
+		self.console.set('%28s' % ('kflow.sc saved.'))
+
 
 
 	def render(self, renderType):
