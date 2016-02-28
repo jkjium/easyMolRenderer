@@ -38,6 +38,7 @@ def __init__(self):
 class Camera:
 	def __init__(self):
 		self.upIndex = 1
+		self.dofScale = 1.0 # recording dof slide value from gui
 		self.attr = {}
 		self.attr['type']='pinhole'
 		self.attr['eye'] = '0.0 0.0 0.0'
@@ -53,6 +54,9 @@ class Camera:
 			#self.rotation 36.0
 		#t=='spherical':
 		#t=='fisheye':
+		self.attr['fdist'] = 10.0
+		self.attr['lensr'] = 1.3
+
 		
 	def SCString(self):
 		attrStr='camera {'
@@ -62,6 +66,10 @@ class Camera:
 		attrStr = ('%s\n\tup %s') % (attrStr, self.attr['up'])
 		attrStr = ('%s\n\tfov %s') % (attrStr, self.attr['fov'])
 		attrStr = ('%s\n\taspect %s') % (attrStr, self.attr['aspect'])
+		if self.attr['type'] == 'thinlens':
+			attrStr = ('%s\n\tfdist %.1f') % (attrStr, self.attr['fdist'])
+			attrStr = ('%s\n\tlensr %.2f') % (attrStr, self.attr['lensr'])
+
 		attrStr = ('%s\n}\n') % (attrStr)
 		return attrStr
 
@@ -206,6 +214,24 @@ class Image:
 		self.attr['floor:n'] = [0.0, 1.0, 0.0] # determined by camera.up attribute
 		self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype diffuse\n\tdiff 1.0 1.0 1.0\n}\n'
 
+
+		# [DOF]
+		# works with camera
+		# camera.attr['type']='thinlens'
+		# camera.fdist = 0 ~ self.maxz #focus distance
+		# camera.lensr = 1.0 # blurry value for out of focus objects
+		# adjusted in parseCamera()
+		# setup values for dof
+		# corresponding changes in camera.SCString()
+
+		# dof switch
+		self.dof = False
+		# fdist for dof
+		# updated in checkLowestPoint()
+		#self.maxz = -1e3000
+		self.maxz = -200
+		self.minz = 200
+
 		self.floorShadow = 1
 		self.outputWidth = 1280
 		self.floorAngle = 90.0
@@ -215,6 +241,7 @@ class Image:
 
 		# global shader
 		self.attr['globalShader'] = 'diff'
+
 
 	def setFloorAngle(self, angle):
 		self.floorAngle = angle
@@ -257,6 +284,11 @@ class Image:
 			self.lowestPoint[0] = cp[0]
 			self.lowestPoint[1] = cp[1]
 			self.lowestPoint[2] = cp[2]
+		if cp[2] > self.maxz:
+			self.maxz = cp[2]
+		if cp[2] < self.minz:
+			self.minz = cp[2]
+
 
 
 	# output SC strings
@@ -349,10 +381,18 @@ class pov:
 		t2 = time.time()
 		print 'Writing SC information ...\nTime elapsed: %s seconds.' % (str(t2-t1))
 
+		# after get minmax z, before writing camera
+		if self.globalCamera.attr['type'] == 'thinlens':
+			# -1.0 * (min - max) since z is always negative
+			self.globalCamera.attr['fdist'] = -1.0 * (self.globalCamera.dofScale * (self.globalImage.minz - self.globalImage.maxz)/90.0 + self.globalImage.maxz)
+
 
 
 		fout=open('kflow.sc','w')
+		# globalSCString['camera'] stores Image informat not camera
+		# after adding dof, camera SC need to generate after all the geometry parsed.
 		fout.write(''.join(self.globalSCString['camera']))
+		fout.write(self.globalCamera.SCString())
 	#	out.write(''.join(globalSCString['light_source']))
 		fout.write(self.globalShaderFactory.SCString(self.globalImage.attr['globalShader']))
 		fout.write(self.globalImage.floorSCString())
@@ -421,7 +461,8 @@ class pov:
 		self.globalCamera.attr['fov']='25.0'
 		self.globalCamera.attr['aspect']=aspect
 		
-		return self.globalImage.SCString()+self.globalCamera.SCString()		
+		#return self.globalImage.SCString()+self.globalCamera.SCString()		
+		return self.globalImage.SCString()	
 
 	# do nothing
 	def parseDefault(self, entry):
@@ -643,6 +684,7 @@ class pyKFlowPlugin:
 		self.dropShadow = Tkinter.BooleanVar()
 		self.bgColor = '1 1 1'
 		self.stageAngle = 10
+		self.dofDist = -1
 		self.varImageWidth = Tkinter.StringVar()
 
 		self.parent = app.root
@@ -656,7 +698,7 @@ class pyKFlowPlugin:
 							defaultbutton = 'Render IPR',
 							command = self.execute)
 		Pmw.setbusycursorattributes(self.dialog.component('hull'))
-
+		
 		w = Tkinter.Label(self.dialog.interior(),
                           text='PyMOL KFlow \nKejue Jia, 2015 - www.morphojourney.com',
                           #background='black',
@@ -665,12 +707,14 @@ class pyKFlowPlugin:
                           #pady = 20,
                           )
 		w.pack(fill = 'both', expand=True, padx = 10, pady = 2)
-
+		
 		self.notebook = Pmw.NoteBook(self.dialog.interior())
-		self.notebook.pack(fill='both', expand=True, padx=10, pady=10)
+		self.notebook.pack(fill='both', expand=True, padx=10, pady=5)
 
 		tab_main = self.notebook.add('Main')
 		self.notebook.tab('Main').focus_set()
+
+
 		labelFrame_scene = Tkinter.LabelFrame(tab_main, text='Scene')
 		labelFrame_scene.pack(fill='both', expand = True, padx = 10, pady = 5)
 		#labelFrame_scene.grid()
@@ -720,6 +764,17 @@ class pyKFlowPlugin:
 		self.optionMenu_bgShader = Pmw.OptionMenu(labelFrame_scene, labelpos='w', label_text='Background Shader:', menubutton_textvariable=self.bgShader, items=('Diff','Phong','Shiny','Glass', 'Mirror'))
 		self.optionMenu_bgShader.grid(sticky='we', row=5, column=1, columnspan=2, padx=5, pady=3)
 
+		# scene angle (if drop shadow is set to true)
+		label_dof = Tkinter.Label(labelFrame_scene, text='Depth of field:')
+		label_dof.grid(sticky='w', row=6, column=1, padx=5, pady=3)
+		self.scale_dof = Tkinter.Scale(labelFrame_scene, length= 80, 
+							from_=-1.0, to=100.0, resolution=1.0, orient = Tkinter.HORIZONTAL, 
+							command = self.changeDofDist)
+		self.scale_dof.set(-1.0)
+		self.scale_dof.grid(sticky='we', row=6, column=2, padx=5, pady=3)
+
+		# important!
+		self.notebook.setnaturalsize()
 
  # main window event dispatcher
 	def execute(self, event):
@@ -756,6 +811,10 @@ class pyKFlowPlugin:
 		self.stageAngle = int(value)
 
 
+	def changeDofDist(self, value):
+		self.dofDist = int(value)
+
+
 	def getSunflow(self, destPath):
 		'''
 		get the path to kflow.jar and bring it to 
@@ -778,6 +837,7 @@ class pyKFlowPlugin:
 		self.bgShader.set('Diff')
 		self.console.set('%28s' % ('Scene reset.'))
 
+
 	def saveSC(self):
 		(pov_header, pov_body) = cmd.get_povray()
 		self.p = pov()
@@ -787,6 +847,13 @@ class pyKFlowPlugin:
 		self.p.globalImage.setFloorShadow(self.dropShadow.get())
 		self.p.globalImage.setOutputWidth(int(self.varImageWidth.get()))
 		self.p.globalImage.setFloorAngle(self.stageAngle)		
+
+		if self.dofDist != -1:
+			self.p.globalCamera.attr['type'] = 'thinlens'
+			# will be used in p.parsePov
+			# change fdist before p.camera writing SCString
+			self.p.globalCamera.dofScale = self.dofDist 
+
 		self.p.parsePov(''.join([pov_header, pov_body]))		
 		self.console.set('%28s' % ('kflow.sc saved.'))
 
@@ -820,6 +887,11 @@ class pyKFlowPlugin:
 			self.console.set('%28s' % ('Render IPR'))
 			self.p.globalImage.setOutputWidth(800)
 		self.p.globalImage.setFloorAngle(self.stageAngle)		
+		if self.dofDist != -1:
+			self.p.globalCamera.attr['type'] = 'thinlens'
+			# will be used in p.parsePov
+			# change fdist before p.camera writing SCString
+			self.p.globalCamera.dofScale = self.dofDist 
 		self.p.parsePov(''.join([pov_header, pov_body]))
 
 		sunflowpath = os.path.expanduser('~')+'/kflow.jar'
