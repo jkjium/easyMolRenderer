@@ -1,5 +1,5 @@
 import math
-from collections import OrderedDict
+
 #%bucket 64 hilbert #A larger bucket size means more RAM usage and less time rendering.
 #image {
 #	resolution 1280 959
@@ -30,7 +30,7 @@ from collections import OrderedDict
 #}
 class Image:
 	def __init__(self):
-		self.attr = OrderedDict()
+		self.attr = {}
 		# attributes for image section
 		self.attr['resolution']='1280 959' # to be decided by camera fov
 		self.attr['aa'] = '1 2' # 0 1 for preview, 1 2 for final rendering
@@ -54,20 +54,40 @@ class Image:
 		self.attr['floor:color'] = '1.0 1.0 1.0'
 		
 		# floor
-		self.floorHeight = float('inf')
+		#self.floorHeight = float('inf') # not support in pymol
+		self.floorHeight = 1e3000
 		self.attr['floor:p'] = [0.0, 0.0, 0.0] # to be adjust according to the minimum point
 		self.attr['floor:n'] = [0.0, 1.0, 0.0] # determined by camera.up attribute
 		self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype diffuse\n\tdiff 1.0 1.0 1.0\n}\n'
 
+
+		# [DOF]
+		# works with camera
+		# camera.attr['type']='thinlens'
+		# camera.fdist = 0 ~ self.maxz #focus distance
+		# camera.lensr = 1.0 # blurry value for out of focus objects
+		# adjusted in parseCamera()
+		# setup values for dof
+		# corresponding changes in camera.SCString()
+
+		# dof switch
+		self.dof = False
+		# fdist for dof
+		# updated in checkLowestPoint()
+		#self.maxz = -1e3000
+		self.maxz = -200
+		self.minz = 200
+
 		self.floorShadow = 1
 		self.outputWidth = 1280
-		self.floorAngle = 0.0
+		self.floorAngle = 90.0
 
-		self.minHeight = float('inf')
+		self.minHeight = 1e3000 #float('inf')
 		self.lowestPoint = [0.0, 0.0, 0.0]
 
 		# global shader
 		self.attr['globalShader'] = 'diff'
+
 
 	def setFloorAngle(self, angle):
 		self.floorAngle = angle
@@ -86,12 +106,13 @@ class Image:
 
 
 	def setFloorShader(self, shader):
+		shader=shader.lower()
 		if shader == 'diff':
 			self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype diffuse\n\tdiff %s\n}\n' % (self.attr['floor:color'])
 		elif shader == 'glass':
-			self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype glass\n\teta 1.33\n\tcolor  1 1 1\n\tabsorbtion.distance 5.0\n}\n' 
+			self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype glass\n\teta 1.33\n\tcolor  %s\n\tabsorbtion.distance 5.0\n}\n' % (self.attr['floor:color'])
 		elif shader == 'mirror':
-			self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype mirror\n\trefl 1 1 1\n}\n' 
+			self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype mirror\n\trefl %s\n}\n' % (self.attr['floor:color'])
 		elif shader == 'shiny':
 			self.attr['floor:shader'] = 'shader {\n\tname floor\n\ttype shiny\n\tdiff { "sRGB nonlinear" %s }\n\trefl 0.5\n}\n' % (self.attr['floor:color'])
 		elif shader == 'phong':
@@ -102,6 +123,8 @@ class Image:
 	#   old point = [a, b, c]
 	#	new point = [a, b*cos(x)+(-1)*c*sin(x), b*sin(x)+c*cos(x)]
 	# point in original coordinate system will be recorded
+	# minz, maxz are for DOF fdist range
+	# this function is called by pov.checkLowestPoint()
 	def checkLowestPoint(self, cp):
 		np = [cp[0], cp[1]*math.cos(math.radians(-1*self.floorAngle)) + (-1)*cp[2]*math.sin(math.radians(-1*self.floorAngle)), cp[1]*math.sin(math.radians(-1*self.floorAngle)) + cp[2]*math.cos(math.radians(-1*self.floorAngle))]
 		if np[1] < self.floorHeight:
@@ -109,7 +132,10 @@ class Image:
 			self.lowestPoint[0] = cp[0]
 			self.lowestPoint[1] = cp[1]
 			self.lowestPoint[2] = cp[2]
-
+		if cp[2] > self.maxz:
+			self.maxz = cp[2]
+		if cp[2] < self.minz:
+			self.minz = cp[2]
 
 	# output SC strings
 	def SCString(self):
@@ -138,7 +164,7 @@ class Image:
 		#	color  { "sRGB nonlinear" 1.0 1.0 1.0 }
 		#}		
 #		bgStr = 'background {\n\tcolor %s\n}' % (self.attr['bg_color'])
-		bgStr = 'background {\n\tcolor %s\n}' % ('.5 .5 .5')
+		bgStr = 'background {\n\tcolor %s\n}' % ('1.0 1.0 1.0')
 		return ('%s\n%s\n%s\n%s\n') % (imageStr, traceDepthsStr, giStr, bgStr)		
 	
 	def floorSCString(self):

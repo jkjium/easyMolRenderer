@@ -16,7 +16,7 @@ class ShaderFactory:
 	def SCString(self, shaderType):
 		outString=''
 		for ckey in self.ShaderNames:
-			outString = '%s\n%s' % (outString, self.SCSelector[shaderType](ckey))
+			outString = '%s\n%s' % (outString, self.SCSelector[shaderType.lower()](ckey))
 		return outString+'\n'
 	
 	def diffSCString(self, color_id):
@@ -75,4 +75,3 @@ class ShaderFactory:
  	#	samples int 4
 	#}
 		return 'shader {\n\tname %s\n\ttype phong\n\tdiff { "sRGB linear" %s }\n\tspec { "sRGB linear" %s } 80\n\tsamples 4\n}\n' % (self.ShaderNames[color_id], color_id, color_id)
-
