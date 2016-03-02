@@ -4,6 +4,10 @@ class ShaderFactory:
 		self.SCSelector={'diff': self.diffSCString, 'mirror': self.mirrorSCString, 'shiny':self.shinySCString, 'ambocc':self.amboccSCString, 'glass':self.glassSCString, 'phong':self.phongSCString}
 		
 		self.shaderType = 'diff'
+		self.colorSpace = 'sRGB nonlinear'
+		# sRGB linear
+		# sRGB nonlinear
+		# XYZ
 
 	# given color return shader name	
 	def assignShaderName(self, color_id):
@@ -25,7 +29,7 @@ class ShaderFactory:
 	#	type diffuse
 	#	diff 1.0000 0.6000 0.6000
 	#}
-		return 'shader {\n\tname %s\n\ttype diffuse\n\tdiff %s\n}\n' % (self.ShaderNames[color_id], color_id)
+		return 'shader {\n\tname %s\n\ttype diffuse\n\tdiff { "%s" %s }\n}\n' % (self.ShaderNames[color_id], self.colorSpace, color_id)
 
 	def mirrorSCString(self, color_id):
 	#shader {
@@ -33,7 +37,7 @@ class ShaderFactory:
   	#	type mirror
   	#	refl 0.8 0.2 0.2
 	#}
-		return 'shader {\n\tname %s\n\ttype mirror\n\trefl %s\n}\n' % (self.ShaderNames[color_id], color_id)
+		return 'shader {\n\tname %s\n\ttype mirror\n\trefl { "%s" %s }\n}\n' % (self.ShaderNames[color_id], self.colorSpace, color_id)
 
 	def shinySCString(self, color_id):
 	#shader {
@@ -42,7 +46,7 @@ class ShaderFactory:
   	#	diff { "sRGB nonlinear" 0.80 0.250 0.250 }
   	#	refl 0.1
 	#}
-		return 'shader {\n\tname %s\n\ttype shiny\n\tdiff { "sRGB nonlinear" %s }\n\trefl 0.2\n}\n' % (self.ShaderNames[color_id], color_id)
+		return 'shader {\n\tname %s\n\ttype shiny\n\tdiff { "%s" %s }\n\trefl 0.8\n}\n' % (self.ShaderNames[color_id], self.colorSpace, color_id)
 
 	def amboccSCString(self, color_id):
 	#shader {
@@ -53,7 +57,7 @@ class ShaderFactory:
   	#	samples 32
   	#	dist 9.0
 	#}
-		return 'shader {\n\tname %s\n\ttype amb-occ\n\tbright { "sRGB nonlinear" 0.9 0.9 0.9 }\n\tdark { "sRGB nonlinear" %s }\n\tsamples 32\n\tdist 9.0\n}\n' % (self.ShaderNames[color_id], color_id)
+		return 'shader {\n\tname %s\n\ttype amb-occ\n\tbright { "%s" 0.9 0.9 0.9 }\n\tdark { "%s" %s }\n\tsamples 32\n\tdist 9.0\n}\n' % (self.ShaderNames[color_id], self.colorSpace, self.colorSpace, color_id)
 
 	def glassSCString(self, color_id):
 	#shader {
@@ -64,7 +68,7 @@ class ShaderFactory:
 	#	absorbtion.distance 5.0
 	#	absorbtion.color { "sRGB nonlinear" 1.0 1.0 1.0 }
 	#}
-		return 'shader {\n\tname %s\n\ttype glass\n\teta 1.33\n\tcolor  %s\n\tabsorbtion.distance 5.0\n}\n' % (self.ShaderNames[color_id], color_id)
+		return 'shader {\n\tname %s\n\ttype glass\n\teta 1.33\n\tcolor { "%s" %s }\n\tabsorbtion.distance 5.0\n}\n' % (self.ShaderNames[color_id], self.colorSpace, color_id)
 
 	def phongSCString(self, color_id):
 	#shader sfpho.shader {
@@ -74,4 +78,4 @@ class ShaderFactory:
  	#	power float 50.0
  	#	samples int 4
 	#}
-		return 'shader {\n\tname %s\n\ttype phong\n\tdiff { "sRGB linear" %s }\n\tspec { "sRGB linear" %s } 80\n\tsamples 4\n}\n' % (self.ShaderNames[color_id], color_id, color_id)
+		return 'shader {\n\tname %s\n\ttype phong\n\tdiff { "%s" %s }\n\tspec { "%s" %s } 80\n\tsamples 4\n}\n' % (self.ShaderNames[color_id], self.colorSpace, color_id, self.colorSpace, color_id)

@@ -14,6 +14,9 @@ class config:
 		self.floorColor = '1 1 1'
 		self.dofDist = -1
 
+		# shader parameters
+		self.colorSpace = 'sRGB nonlinear'
+
 		# read parameters
 		self.parseCFG(cfgfile)
 
@@ -57,5 +60,8 @@ class config:
 			elif 'dofDist' == keyvalue[0]:
 				self.dofDist = int(keyvalue[1])
 				print 'set dofDist: %d' % self.dofDist
+			elif 'colorSpace' == keyvalue[0]:
+				self.colorSpace = keyvalue[1]
+				print 'set colorSpace: %s' % self.colorSpace
 
 
