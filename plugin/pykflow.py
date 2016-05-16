@@ -9,9 +9,11 @@ import tkFileDialog
 import Pmw
 import tkColorChooser
 from pymol import cmd
+from types import *
 import time
 import math
 import StringIO
+import re
 
 try:
 	from pymol import *
@@ -76,24 +78,38 @@ class Camera:
 
 
 class ShaderFactory:
+
+	# map for pymol selection specific shader assignment
+	seleSlot = {'diff': 0.001, 'phong': 0.002, 'shiny': 0.003, 'mirror': 0.004, 'glass': 0.005, 'ambocc': 0.006}
+
 	def __init__(self):
 		self.ShaderNames={}
 		self.SCSelector={'diff': self.diffSCString, 'mirror': self.mirrorSCString, 'shiny':self.shinySCString, 'ambocc':self.amboccSCString, 'glass':self.glassSCString, 'phong':self.phongSCString}
 		
 		self.shaderType = 'diff'
+		self.seleShader = {}
 
 	# given color return shader name	
-	def assignShaderName(self, color_id):
+	# color_str: 0.0000,0.00000,0.00000
+	def assignShaderName(self, color_str):
+		rgb = color_str.split(',')
+		color_id = '%s %s %s' % (rgb[0][0:5], rgb[1][0:5], rgb[2][0:5])
 		if color_id in self.ShaderNames:
 			return self.ShaderNames[color_id]
 		else:
 			self.ShaderNames[color_id]= 'sh.%d' % len(self.ShaderNames) #shader sh.%d
+			#print 'add %s as name: %s' % (color_id, self.ShaderNames[color_id])
 			return self.ShaderNames[color_id]		
 			
 	def SCString(self, shaderType):
 		outString=''
+		#print repr(self.seleShader)
 		for ckey in self.ShaderNames:
-			outString = '%s\n%s' % (outString, self.SCSelector[shaderType.lower()](ckey))
+			#print ckey
+			if ckey in self.seleShader:
+				outString = '%s\n%s' % (outString, self.SCSelector[self.seleShader[ckey][0]](ckey))
+			else:
+				outString = '%s\n%s' % (outString, self.SCSelector[shaderType.lower()](ckey))
 		return outString+'\n'
 	
 	def diffSCString(self, color_id):
@@ -538,7 +554,8 @@ class pov:
 			if entry[i]=='<':
 				j=i+1
 				while entry[j]!='>': j+=1
-				color = entry[i+1:j].replace(',', ' ')
+				#color = entry[i+1:j].replace(',', ' ')
+				color = entry[i+1:j]
 				#print color
 				sfShader = self.globalShaderFactory.assignShaderName(color)
 				break # only one color for one mesh
@@ -593,7 +610,7 @@ class pov:
 			if entry[i]=='<':
 				j=i+1
 				while entry[j]!='>': j+=1
-				color = entry[i+1:j].replace(',', ' ')
+				color = entry[i+1:j]
 				sfShader = self.globalShaderFactory.assignShaderName(color)
 				break
 
@@ -631,7 +648,7 @@ class pov:
 			if entry[i]=='<':
 				j=i+1
 				while entry[j]!='>': j+=1
-				color = entry[i+1:j].replace(',', ' ')
+				color = entry[i+1:j]
 				#print color
 				sfShader = self.globalShaderFactory.assignShaderName(color)
 				break	
@@ -687,6 +704,10 @@ class pyKFlowPlugin:
 		self.dofDist = -1
 		self.varImageWidth = Tkinter.StringVar()
 
+		# for selection speicific shader
+		self.seleShaderDict = {}
+		self.spColorShaderDict = {}
+
 		self.parent = app.root
 		self.dialog = Pmw.Dialog(self.parent,
 							buttons = ('Render IPR',
@@ -711,8 +732,12 @@ class pyKFlowPlugin:
 		self.notebook = Pmw.NoteBook(self.dialog.interior())
 		self.notebook.pack(fill='both', expand=True, padx=10, pady=5)
 
-		tab_main = self.notebook.add('Main')
-		self.notebook.tab('Main').focus_set()
+######################################
+######## main tab ####################
+######################################
+
+		tab_main = self.notebook.add(' Main ')
+		self.notebook.tab(' Main ').focus_set()
 
 
 		labelFrame_scene = Tkinter.LabelFrame(tab_main, text='Scene')
@@ -727,7 +752,7 @@ class pyKFlowPlugin:
 		# image width
 		entryField_imageWidth = Pmw.EntryField(labelFrame_scene, 
 									label_text='Image Width:', 
-									labelpos='w', value='2560', 
+									labelpos='w', value='800', 
 									entry_textvariable=self.varImageWidth)
 		entryField_imageWidth.grid(sticky='w', row=0, column = 1, columnspan=2, padx =5 , pady=3)
 
@@ -753,15 +778,15 @@ class pyKFlowPlugin:
 
 		# optionMenu for shader
 		self.globalShader = Tkinter.StringVar()
-		self.globalShader.set('Diff')
+		self.globalShader.set('diff')
 #		self.optionMenu_shader = Pmw.OptionMenu(labelFrame_scene, labelpos='w', label_text='Molecule Shader:', menubutton_textvariable=self.globalShader, items=('Diff','Phong','Shiny','Glass','Mirror'), initialitem = 'Diff')
-		self.optionMenu_shader = Pmw.OptionMenu(labelFrame_scene, labelpos='w', label_text='Molecule Shader:', menubutton_textvariable=self.globalShader, items=('Diff','Phong','Shiny','Glass','Mirror'))
+		self.optionMenu_shader = Pmw.OptionMenu(labelFrame_scene, labelpos='w', label_text='Molecule Shader:', menubutton_textvariable=self.globalShader, items=('diff','phong','shiny','glass','mirror'))
 		self.optionMenu_shader.grid(sticky='we', row=4, column=1, columnspan=2, padx=5, pady=3)
 
 		# optionMenu for ground shader
 		self.bgShader = Tkinter.StringVar()
-		self.bgShader.set('Diff')
-		self.optionMenu_bgShader = Pmw.OptionMenu(labelFrame_scene, labelpos='w', label_text='Background Shader:', menubutton_textvariable=self.bgShader, items=('Diff','Phong','Shiny','Glass', 'Mirror'))
+		self.bgShader.set('diff')
+		self.optionMenu_bgShader = Pmw.OptionMenu(labelFrame_scene, labelpos='w', label_text='Background Shader:', menubutton_textvariable=self.bgShader, items=('diff','phong','shiny','glass', 'mirror'))
 		self.optionMenu_bgShader.grid(sticky='we', row=5, column=1, columnspan=2, padx=5, pady=3)
 
 		# scene angle (if drop shadow is set to true)
@@ -772,6 +797,46 @@ class pyKFlowPlugin:
 							command = self.changeDofDist)
 		self.scale_dof.set(-1.0)
 		self.scale_dof.grid(sticky='we', row=6, column=2, padx=5, pady=3)
+
+######################################
+######## selection tab ###############
+######################################
+
+		tab_selection = self.notebook.add(' Selection Shaders ')
+		labelFrame_selection = Tkinter.LabelFrame(tab_selection, text='Selection')
+		labelFrame_selection.pack(fill='both', expand = True, padx = 10, pady = 5)		
+
+		# output console textfield
+		self.selectionConsole = Tkinter.StringVar()
+		#self.selectionConsole.set('%28s' % ('Specify shader to PYMOL Selections'))
+		self.selectionConsole.set('Specify shader to PYMOL Selections')
+		self.label_selectionConsole = Tkinter.Label(labelFrame_selection, textvariable=self.selectionConsole, foreground='#08194d')
+		self.label_selectionConsole.grid(sticky='w', row=0, column=0, padx=5, pady=30)
+
+		# 
+		self.varSelectionName = Tkinter.StringVar()
+		entryField_selectionName = Pmw.EntryField(labelFrame_selection, 
+									label_text='Sele Name:', 
+									labelpos='w', value='', 
+									entry_textvariable=self.varSelectionName)
+		entryField_selectionName.grid(sticky='w', row=1, column = 0, padx =5 , pady=3)
+
+		# dropdown for selection shader
+		self.selectionShader = Tkinter.StringVar()
+		self.selectionShader.set('diff')
+		self.optionMenu_selectionShader = Pmw.OptionMenu(labelFrame_selection, labelpos='w', label_text='Available Shaders:', menubutton_textvariable=self.selectionShader, items=('diff','phong','shiny','glass', 'mirror'))
+		self.optionMenu_selectionShader.grid(sticky='w', row=2, column=0, padx=5, pady=3)		
+
+		label_separater = Tkinter.Label(labelFrame_selection, text='_______________________________', foreground='#909090')
+		label_separater.grid(sticky='w', row=3, column=0, padx=5, pady=3)
+
+		# apply button for shader selection
+		button_selection = Tkinter.Button(labelFrame_selection, text = '  Apply  ', command = self.applyShader)
+		button_selection.grid(sticky='w', row=4, column=0, padx=40, pady=15)		
+
+		# apply button for shader selection
+		button_unset = Tkinter.Button(labelFrame_selection, text = '  Unset all  ', command = self.unsetShader)
+		button_unset.grid(sticky='e', row=4, column=0, padx=100, pady=15)		
 
 		# important!
 		self.notebook.setnaturalsize()
@@ -788,12 +853,124 @@ class pyKFlowPlugin:
 			self.saveSC()
 		elif event == 'Reset Default':
 			self.resetScene()
+			self.unsetShader()
 		else:
 			self.quit()
 
 	# distroy main window
 	def quit(self):
 		self.dialog.destroy()
+
+	# clean all the shader settings in (selection shader tab)
+	def unsetShader(self):
+ 		self.selectionConsole.set('Unset all selection shaders')
+ 		self.seleShaderDict = {}
+		self.spColorShaderDict = {}
+
+	# selection shader tab
+	# put sele: shader pair into seleShaderDict
+	# action is taken when (save SC / render
+	def applyShader(self):
+		sele = self.varSelectionName.get()
+		shader = self.optionMenu_selectionShader.getvalue()
+		sess = cmd.get_session()['names']
+		match_flag = False
+		for i in sess:
+			if type(i) is ListType:
+				match = re.search(sele, i[0])
+				#print 'sele: %s, i[0]: %s, match: %s' % (sele, i[0], repr(match))
+
+				# exact word match
+				# pattern s1, string: 1t3r
+				# match == None
+				if match is None:
+					continue
+				# when using regular expression like 's*'
+				# match is always not None
+				# match.group(0) == '' if not matching
+				if match is not None: 
+					#print repr(match.group(0))
+					if match.group(0) == '':
+						continue
+
+				match_flag = True
+				#if match.group(0):
+				#if sele == i[0]:
+				# user clicked apply for a selection more than once
+				if i[0] in self.seleShaderDict:
+					for key in self.spColorShaderDict:
+						sele_in_dict = self.spColorShaderDict[key][1]
+						if i[0] == sele_in_dict:
+							self.selectionConsole.set('Shader for [%s] is not empty. \n Click [Unset all] if scene has been changed.' % i[0])
+							return
+								#self.spColorShaderDict.pop(key, 0)
+
+				self.seleShaderDict[i[0]] = shader
+	 			self.selectionConsole.set('Set [%s] with [%s] shader' % (sele, self.seleShaderDict[i[0]]))
+	 			# add into dictionary
+	 			self.sele2Color()
+
+	 	if match_flag == False:
+ 			self.selectionConsole.set('Error: Selection [%s] does not exist.' % sele)
+
+
+ 	# transfer sele in seleShaderDict to color id
+ 	# sele -> color id
+ 	# return a dictionary with ['color': ('shader', 'sele')] information
+ 	def sele2Color(self):
+ 		globalShader = self.optionMenu_shader.getvalue()
+
+ 		# (color:shader) dictionary
+ 		# be used in shaderFactory.SCString()
+ 		#self.spColorShaderDict = {}
+ 		# get all the selection name
+		sess = cmd.get_session()['names']
+		for i in sess:
+			if type(i) is ListType:
+				# for each selection in the scene
+				# also should exist in seleShaderDict
+				if i[0] in self.seleShaderDict:
+					newShader =  self.seleShaderDict[i[0]]
+					if newShader != globalShader: # should be different from global shader, otherwise do nothing
+						newColorInc = ShaderFactory.seleSlot[newShader]
+						# pymol api routine
+						# get the color for all the atoms in current selection
+						stored.idcolor_list = []
+						cmd.iterate(i[0], 'stored.idcolor_list.append((ID, int(color)))')
+
+						# for a set of atoms have the same new color
+						# apply color all at once for better performance
+						# cmd.color is slow
+						# example result: (color_index: [atom ids])
+						# {25: [2, 3, 6], 6: [1], 9: [4, 5]}
+						colorSetDict = {}
+						for (atom_id, color) in stored.idcolor_list:
+							colorSetDict.setdefault(color, []).append(str(atom_id))
+						#print repr(colorSetDict)
+
+						# for each color
+						#for (atom_id, color) in stored.idcolor_list:
+						for color in colorSetDict:
+							atom_set = colorSetDict[color]
+							rgb_color = cmd.get_color_tuple(color)
+							#newColorInc = 0.001
+							if rgb_color[2] >= 0.990:
+								color_id = '%s %s %s' % (str(rgb_color[0])[0:5].ljust(5, '0'), str(rgb_color[1])[0:5].ljust(5, '0'), str(rgb_color[2]-newColorInc)[0:5])
+							else:
+								color_id = '%s %s %s' % (str(rgb_color[0])[0:5].ljust(5, '0'), str(rgb_color[1])[0:5].ljust(5, '0'), str(rgb_color[2]+newColorInc)[0:5])
+							#print atom_id, color, color_id, repr(rgb_color)
+
+							# color_id from all the sele:shader dictionary
+							# determine color_id:shader pair
+							if color_id not in self.spColorShaderDict:
+								self.spColorShaderDict[color_id] = [newShader, i[0]]
+
+							# apply new color to atom set
+							newRGB = color_id.split(' ')
+							newColor = [float(newRGB[0]), float(newRGB[1]), float(newRGB[2])]
+							cmd.set_color(color_id, newColor)
+							cmd.color(color_id, ('ID %s' % '+'.join(atom_set)))
+						print 'apply shader [%s] to selection [%s].' % (newShader, i[0])
 
 
 	# background color pickup event
@@ -829,7 +1006,7 @@ class pyKFlowPlugin:
 		return
 
 	def resetScene(self):
-		self.varImageWidth.set('2560')
+		self.varImageWidth.set('800')
 		self.dropShadow.set(True)
 		self.scale_stageAngle.set(10.0)
 		self.changeStageAngle(10.0)
@@ -841,6 +1018,8 @@ class pyKFlowPlugin:
 	def saveSC(self):
 		(pov_header, pov_body) = cmd.get_povray()
 		self.p = pov()
+		self.p.globalShaderFactory.seleShader = self.spColorShaderDict
+		print repr(self.spColorShaderDict)
 		self.p.globalImage.setFloorColor(self.bgColor)
 		self.p.globalImage.setFloorShader(self.optionMenu_bgShader.getvalue())
 		self.p.globalImage.setGlobalShader(self.optionMenu_shader.getvalue())
@@ -876,6 +1055,7 @@ class pyKFlowPlugin:
 
 		(pov_header, pov_body) = cmd.get_povray()
 		self.p = pov()
+		self.p.globalShaderFactory.seleShader = self.spColorShaderDict
 		self.p.globalImage.setFloorColor(self.bgColor)
 		self.p.globalImage.setFloorShader(self.optionMenu_bgShader.getvalue())
 		self.p.globalImage.setGlobalShader(self.optionMenu_shader.getvalue())
