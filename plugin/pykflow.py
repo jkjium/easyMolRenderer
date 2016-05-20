@@ -57,7 +57,7 @@ class Camera:
 		#t=='spherical':
 		#t=='fisheye':
 		self.attr['fdist'] = 10.0
-		self.attr['lensr'] = 1.3
+		self.attr['lensr'] = 1.5
 
 		
 	def SCString(self):
@@ -89,6 +89,13 @@ class ShaderFactory:
 		self.shaderType = 'diff'
 		self.seleShader = {}
 
+		# shader settings
+		self.colorSpace = 'sRGB nonlinear'
+		self.shaderSamples = 4
+		self.phongSpec = 50
+		self.shinyRefl = 0.5
+		self.glassETA = 1.33		
+
 	# given color return shader name	
 	# color_str: 0.0000,0.00000,0.00000
 	def assignShaderName(self, color_str):
@@ -118,7 +125,7 @@ class ShaderFactory:
 	#	type diffuse
 	#	diff 1.0000 0.6000 0.6000
 	#}
-		return 'shader {\n\tname %s\n\ttype diffuse\n\tdiff %s\n}\n' % (self.ShaderNames[color_id], color_id)
+		return 'shader {\n\tname %s\n\ttype diffuse\n\tdiff { "%s" %s }\n}\n' % (self.ShaderNames[color_id], self.colorSpace, color_id)
 
 	def mirrorSCString(self, color_id):
 	#shader {
@@ -126,7 +133,7 @@ class ShaderFactory:
   	#	type mirror
   	#	refl 0.8 0.2 0.2
 	#}
-		return 'shader {\n\tname %s\n\ttype mirror\n\trefl %s\n}\n' % (self.ShaderNames[color_id], color_id)
+		return 'shader {\n\tname %s\n\ttype mirror\n\trefl { "%s" %s }\n}\n' % (self.ShaderNames[color_id], self.colorSpace, color_id)
 
 	def shinySCString(self, color_id):
 	#shader {
@@ -135,7 +142,7 @@ class ShaderFactory:
   	#	diff { "sRGB nonlinear" 0.80 0.250 0.250 }
   	#	refl 0.1
 	#}
-		return 'shader {\n\tname %s\n\ttype shiny\n\tdiff { "sRGB nonlinear" %s }\n\trefl 0.2\n}\n' % (self.ShaderNames[color_id], color_id)
+		return 'shader {\n\tname %s\n\ttype shiny\n\tdiff { "%s" %s }\n\trefl %.1f\n}\n' % (self.ShaderNames[color_id], self.colorSpace, color_id, self.shinyRefl)
 
 	def amboccSCString(self, color_id):
 	#shader {
@@ -157,7 +164,7 @@ class ShaderFactory:
 	#	absorbtion.distance 5.0
 	#	absorbtion.color { "sRGB nonlinear" 1.0 1.0 1.0 }
 	#}
-		return 'shader {\n\tname %s\n\ttype glass\n\teta 1.33\n\tcolor  %s\n\tabsorbtion.distance 5.0\n}\n' % (self.ShaderNames[color_id], color_id)
+		return 'shader {\n\tname %s\n\ttype glass\n\teta %.2f\n\tcolor { "%s" %s }\n\tabsorbtion.distance 5.0\n}\n' % (self.ShaderNames[color_id], self.glassETA, self.colorSpace, color_id)
 
 	def phongSCString(self, color_id):
 	#shader sfpho.shader {
@@ -167,7 +174,7 @@ class ShaderFactory:
  	#	power float 50.0
  	#	samples int 4
 	#}
-		return 'shader {\n\tname %s\n\ttype phong\n\tdiff { "sRGB linear" %s }\n\tspec { "sRGB linear" %s } 80\n\tsamples 4\n}\n' % (self.ShaderNames[color_id], color_id, color_id)
+		return 'shader {\n\tname %s\n\ttype phong\n\tdiff { "%s" %s }\n\tspec { "%s" %s } %d\n\tsamples %d\n}\n' % (self.ShaderNames[color_id], self.colorSpace, color_id, self.colorSpace, color_id, self.phongSpec, self.shaderSamples)
 
 
 #%bucket 64 hilbert #A larger bucket size means more RAM usage and less time rendering.
@@ -697,12 +704,18 @@ class pyKFlowPlugin:
 
 	def __init__(self, app):
 
-
 		self.dropShadow = Tkinter.BooleanVar()
 		self.bgColor = '1 1 1'
 		self.stageAngle = 10
 		self.dofDist = -1
 		self.varImageWidth = Tkinter.StringVar()
+
+		# shader setting
+		self.colorSpace = 'sRGB nonlinear'
+		self.shaderSamples = 4
+		self.phongSpec = 50
+		self.shinyRefl = 0.5
+		self.glassETA = 1.33
 
 		# for selection speicific shader
 		self.seleShaderDict = {}
@@ -798,6 +811,64 @@ class pyKFlowPlugin:
 		self.scale_dof.set(-1.0)
 		self.scale_dof.grid(sticky='we', row=6, column=2, padx=5, pady=3)
 
+
+######################################
+######## shader tab ##################
+######################################
+
+		tab_shader = self.notebook.add(' Shaders Setting ')
+		labelFrame_shader = Tkinter.LabelFrame(tab_shader, text='Setting')
+		labelFrame_shader.pack(fill='both', expand = True, padx = 10, pady = 5)	
+
+		self.shaderConsole = Tkinter.StringVar()
+		self.shaderConsole.set('%24s' % ('Settings for general shaders\nAffect all the shaders in the scene'))
+		self.label_shaderConsole = Tkinter.Label(labelFrame_shader, textvariable=self.shaderConsole, foreground='#08194d')
+		self.label_shaderConsole.grid(sticky='w', row=0, column=0, padx=5, pady=3)
+
+
+		# optionMenu for color space
+		self.colorSpace = Tkinter.StringVar()
+		self.colorSpace.set('sRGB linear')
+		self.optionMenu_colorSpace = Pmw.OptionMenu(labelFrame_shader, labelpos='w', label_text='Color Space:', menubutton_textvariable=self.colorSpace, items=('sRGB linear','sRGB nonlinear','XYZ'))
+		self.optionMenu_colorSpace.grid(sticky='we', row=0, column=1, columnspan=2, padx=5, pady=3)
+
+		label_shaderSamples = Tkinter.Label(labelFrame_shader, text='Shader Samples:')
+		label_shaderSamples.grid(sticky='w', row=1, column=1, padx=5, pady=3)
+		self.scale_shaderSamples = Tkinter.Scale(labelFrame_shader, length= 80, 
+							from_=4, to=64, resolution=4, orient = Tkinter.HORIZONTAL, 
+							command = self.changeShaderSamples)
+		self.scale_shaderSamples.set(4)
+		self.scale_shaderSamples.grid(sticky='we', row=1, column=2, padx=5, pady=3)
+
+
+		label_phongSpec = Tkinter.Label(labelFrame_shader, text='Phong Spec:')
+		label_phongSpec.grid(sticky='w', row=2, column=1, padx=5, pady=3)
+		self.scale_phongSpec = Tkinter.Scale(labelFrame_shader, length= 80, 
+							from_=0, to=500, resolution=10, orient = Tkinter.HORIZONTAL, 
+							command = self.changePhongSpec)
+		self.scale_phongSpec.set(50)
+		self.scale_phongSpec.grid(sticky='we', row=2, column=2, padx=5, pady=3)
+
+
+
+		label_shinyRefl = Tkinter.Label(labelFrame_shader, text='Shiny Refl:')
+		label_shinyRefl.grid(sticky='w', row=3, column=1, padx=5, pady=3)
+		self.scale_shinyRefl = Tkinter.Scale(labelFrame_shader, length= 80, 
+							from_=0.0, to=2.0, resolution=0.1, orient = Tkinter.HORIZONTAL, 
+							command = self.changeShinyRefl)
+		self.scale_shinyRefl.set(0.5)
+		self.scale_shinyRefl.grid(sticky='we', row=3, column=2, padx=5, pady=3)
+
+
+		label_glassETA = Tkinter.Label(labelFrame_shader, text='Glass eta:')
+		label_glassETA.grid(sticky='w', row=4, column=1, padx=5, pady=3)
+		self.scale_glassETA = Tkinter.Scale(labelFrame_shader, length= 80, 
+							from_=0.0, to=3.0, resolution=0.1, orient = Tkinter.HORIZONTAL, 
+							command = self.changeGlassETA)
+		self.scale_glassETA.set(1.33)
+		self.scale_glassETA.grid(sticky='we', row=4, column=2, padx=5, pady=3)
+
+
 ######################################
 ######## selection tab ###############
 ######################################
@@ -837,6 +908,10 @@ class pyKFlowPlugin:
 		# apply button for shader selection
 		button_unset = Tkinter.Button(labelFrame_selection, text = '  Unset all  ', command = self.unsetShader)
 		button_unset.grid(sticky='e', row=4, column=0, padx=100, pady=15)		
+
+
+
+
 
 		# important!
 		self.notebook.setnaturalsize()
@@ -984,6 +1059,23 @@ class pyKFlowPlugin:
 		except Tkinter._tkinter.TclError:
 			self.bgColor = '1.0 1.0 1.0'
 
+	# slide phong spec
+	def changePhongSpec(self, value):
+		self.phongSpec = int(value)
+
+	# slide phong samples
+	def changeShaderSamples(self, value):
+		self.shaderSamples = int(value)
+
+	# slide shiny refl
+	def changeShinyRefl(self, value):
+		self.shinyRefl = float(value) 
+
+	# slide glass eta
+	def changeGlassETA(self, value):
+		self.glassETA = float(value)
+
+	# slide angle
 	def changeStageAngle(self, value):
 		self.stageAngle = int(value)
 
@@ -1001,7 +1093,7 @@ class pyKFlowPlugin:
 												filetypes = [('all', '*')],
 												parent = self.parent)
 		if filePath:
-			print 'copy kflow.jar into your HOME dir...'
+			print 'copy kflow.jar into your HOME directory ...'
 			shutil.copy(filePath, destPath)
 		return
 
@@ -1019,13 +1111,21 @@ class pyKFlowPlugin:
 		(pov_header, pov_body) = cmd.get_povray()
 		self.p = pov()
 		self.p.globalShaderFactory.seleShader = self.spColorShaderDict
-		print repr(self.spColorShaderDict)
 		self.p.globalImage.setFloorColor(self.bgColor)
 		self.p.globalImage.setFloorShader(self.optionMenu_bgShader.getvalue())
 		self.p.globalImage.setGlobalShader(self.optionMenu_shader.getvalue())
 		self.p.globalImage.setFloorShadow(self.dropShadow.get())
 		self.p.globalImage.setOutputWidth(int(self.varImageWidth.get()))
 		self.p.globalImage.setFloorAngle(self.stageAngle)		
+
+
+		# shader settings
+		self.p.globalShaderFactory.colorSpace = self.optionMenu_colorSpace.getvalue()
+		self.p.globalShaderFactory.shaderSamples = self.shaderSamples
+		self.p.globalShaderFactory.phongSpec = self.phongSpec
+		self.p.globalShaderFactory.shinyRefl = self.shinyRefl
+		self.p.globalShaderFactory.glassETA = self.glassETA
+
 
 		if self.dofDist != -1:
 			self.p.globalCamera.attr['type'] = 'thinlens'
@@ -1060,6 +1160,16 @@ class pyKFlowPlugin:
 		self.p.globalImage.setFloorShader(self.optionMenu_bgShader.getvalue())
 		self.p.globalImage.setGlobalShader(self.optionMenu_shader.getvalue())
 		self.p.globalImage.setFloorShadow(self.dropShadow.get())
+
+
+		# shader settings
+		self.p.globalShaderFactory.colorSpace = self.optionMenu_colorSpace.getvalue()
+		self.p.globalShaderFactory.shaderSamples = self.shaderSamples
+		self.p.globalShaderFactory.phongSpec = self.phongSpec
+		self.p.globalShaderFactory.shinyRefl = self.shinyRefl
+		self.p.globalShaderFactory.glassETA = self.glassETA
+
+
 		if renderType == '':	
 			self.console.set('%28s' % ('Full Render'))
 			self.p.globalImage.setOutputWidth(int(self.varImageWidth.get()))
