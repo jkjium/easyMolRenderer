@@ -942,10 +942,74 @@ class pyKFlowPlugin:
  		self.seleShaderDict = {}
 		self.spColorShaderDict = {}
 
+
+	# selection shader tab
+	# put sele: shader pair into seleShaderDict
+	def applyShader(self):
+		print 'new applyShader'
+		sele = self.varSelectionName.get()
+		shader = self.optionMenu_selectionShader.getvalue()
+		sess = cmd.get_names('all')
+
+		for i in sess:
+			if sele == i:
+				# user clicked apply for a selection more than once
+				if i in self.seleShaderDict:
+					for key in self.spColorShaderDict:
+						sele_in_dict = self.spColorShaderDict[key][1]
+						if i == sele_in_dict:
+							self.selectionConsole.set('Shader for [%s] is not empty. \n Click [Unset all] if scene has been changed.' % i)
+							return
+				self.seleShaderDict[i] = shader
+	 			self.selectionConsole.set('Set [%s] with [%s] shader' % (sele, self.seleShaderDict[i]))
+	 			# add into dictionary
+	 			self.sele2Color(i)
+				return
+
+		# not return
+		self.selectionConsole.set('Error: Selection [%s] does not exist.' % sele)
+
+
+ 	# transfer sele in seleShaderDict to color id
+ 	# sele -> color id
+ 	# return a dictionary with ['color': ('shader', 'sele')] information
+ 	def sele2Color(self, sele):
+ 		globalShader = self.optionMenu_shader.getvalue()
+
+		newShader =  self.seleShaderDict[sele]
+		if newShader != globalShader: # should be different from global shader, otherwise do nothing
+			newColorInc = ShaderFactory.seleSlot[newShader]
+
+
+			stored.idcolor_list = []
+			cmd.iterate(sele, 'stored.idcolor_list.append((ID, int(color)))')
+
+			for (atom_id, color) in stored.idcolor_list:
+				rgb_color = cmd.get_color_tuple(color)
+
+				if rgb_color[2] >= 0.990:
+					color_id = '%s %s %s' % (str(rgb_color[0])[0:5].ljust(5, '0'), str(rgb_color[1])[0:5].ljust(5, '0'), str(rgb_color[2]-newColorInc)[0:5])
+				else:
+					color_id = '%s %s %s' % (str(rgb_color[0])[0:5].ljust(5, '0'), str(rgb_color[1])[0:5].ljust(5, '0'), str(rgb_color[2]+newColorInc)[0:5])
+
+				# color_id from all the sele:shader dictionary
+				# determine color_id:shader pair
+				if color_id not in self.spColorShaderDict:
+					self.spColorShaderDict[color_id] = [newShader, sele]
+
+				# apply new color to atom set
+				newRGB = color_id.split(' ')
+				newColor = [float(newRGB[0]), float(newRGB[1]), float(newRGB[2])]
+				cmd.set_color(color_id, newColor)
+				cmd.color(color_id, 'ID %s' % atom_id)
+
+			print 'apply shader [%s] to selection [%s].' % (newShader, sele)			
+
+
 	# selection shader tab
 	# put sele: shader pair into seleShaderDict
 	# action is taken when (save SC / render
-	def applyShader(self):
+	def applyShader_deprecated(self):
 		sele = self.varSelectionName.get()
 		shader = self.optionMenu_selectionShader.getvalue()
 		sess = cmd.get_session()['names']
@@ -992,7 +1056,7 @@ class pyKFlowPlugin:
  	# transfer sele in seleShaderDict to color id
  	# sele -> color id
  	# return a dictionary with ['color': ('shader', 'sele')] information
- 	def sele2Color(self):
+ 	def sele2Color_deprecated(self):
  		globalShader = self.optionMenu_shader.getvalue()
 
  		# (color:shader) dictionary
