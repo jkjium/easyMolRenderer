@@ -880,7 +880,7 @@ class pyKFlowPlugin:
 		# output console textfield
 		self.selectionConsole = Tkinter.StringVar()
 		#self.selectionConsole.set('%28s' % ('Specify shader to PYMOL Selections'))
-		self.selectionConsole.set('Specify shader to PYMOL Selections')
+		self.selectionConsole.set('Specify shader to PYMOL Selections\nSelection must have unified color')
 		self.label_selectionConsole = Tkinter.Label(labelFrame_selection, textvariable=self.selectionConsole, foreground='#08194d')
 		self.label_selectionConsole.grid(sticky='w', row=0, column=0, padx=5, pady=30)
 
@@ -981,27 +981,30 @@ class pyKFlowPlugin:
 			newColorInc = ShaderFactory.seleSlot[newShader]
 
 
-			stored.idcolor_list = []
-			cmd.iterate(sele, 'stored.idcolor_list.append((ID, int(color)))')
+			stored.idcolor_list = set() 
+			cmd.iterate(sele, 'stored.idcolor_list.add(int(color))')
 
-			for (atom_id, color) in stored.idcolor_list:
-				rgb_color = cmd.get_color_tuple(color)
+			if(len(stored.idcolor_list)>1):
+				self.selectionConsole.set('Warning: Selection [%s] contains more than one color.' % sele)
 
-				if rgb_color[2] >= 0.990:
-					color_id = '%s %s %s' % (str(rgb_color[0])[0:5].ljust(5, '0'), str(rgb_color[1])[0:5].ljust(5, '0'), str(rgb_color[2]-newColorInc)[0:5])
-				else:
-					color_id = '%s %s %s' % (str(rgb_color[0])[0:5].ljust(5, '0'), str(rgb_color[1])[0:5].ljust(5, '0'), str(rgb_color[2]+newColorInc)[0:5])
+			color = stored.idcolor_list.pop()
+			rgb_color = cmd.get_color_tuple(color)
 
-				# color_id from all the sele:shader dictionary
-				# determine color_id:shader pair
-				if color_id not in self.spColorShaderDict:
-					self.spColorShaderDict[color_id] = [newShader, sele]
+			if rgb_color[2] >= 0.990:
+				color_id = '%s %s %s' % (str(rgb_color[0])[0:5].ljust(5, '0'), str(rgb_color[1])[0:5].ljust(5, '0'), str(rgb_color[2]-newColorInc)[0:5])
+			else:
+				color_id = '%s %s %s' % (str(rgb_color[0])[0:5].ljust(5, '0'), str(rgb_color[1])[0:5].ljust(5, '0'), str(rgb_color[2]+newColorInc)[0:5])
 
-				# apply new color to atom set
-				newRGB = color_id.split(' ')
-				newColor = [float(newRGB[0]), float(newRGB[1]), float(newRGB[2])]
-				cmd.set_color(color_id, newColor)
-				cmd.color(color_id, 'ID %s' % atom_id)
+			# color_id from all the sele:shader dictionary
+			# determine color_id:shader pair
+			if color_id not in self.spColorShaderDict:
+				self.spColorShaderDict[color_id] = [newShader, sele]
+
+			# apply new color to atom set
+			newRGB = color_id.split(' ')
+			newColor = [float(newRGB[0]), float(newRGB[1]), float(newRGB[2])]
+			cmd.set_color(color_id, newColor)
+			cmd.color(color_id, sele)			
 
 			print 'apply shader [%s] to selection [%s].' % (newShader, sele)			
 
