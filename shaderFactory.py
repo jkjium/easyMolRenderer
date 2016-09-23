@@ -1,4 +1,6 @@
 class ShaderFactory:
+	seleSlot = {'diff': 0.01, 'mirror': 0.02, 'shiny': 0.03, 'ambocc': 0.04, 'glass': 0.05, 'phong': 0.06}
+	shaderDict = {'111': 'diff', '222': 'phong', '333': 'glass', '444': 'mirror', '555':'shiny'}
 	def __init__(self):
 		self.ShaderNames={}
 		self.SCSelector={'diff': self.diffSCString, 'mirror': self.mirrorSCString, 'shiny':self.shinySCString, 'ambocc':self.amboccSCString, 'glass':self.glassSCString, 'phong':self.phongSCString}
@@ -17,11 +19,22 @@ class ShaderFactory:
 			self.ShaderNames[color_id]= 'sh.%d' % len(self.ShaderNames) #shader sh.%d
 			return self.ShaderNames[color_id]		
 			
-	def SCString(self, shaderType):
+	def SCString(self, defaultShader):
 		outString=''
 		for ckey in self.ShaderNames:
+			shaderType = self.decodeShader(ckey, defaultShader)
 			outString = '%s\n%s' % (outString, self.SCSelector[shaderType.lower()](ckey))
 		return outString+'\n'
+
+	# get shader from color info
+	def decodeShader(self, color_id, defaultShader):
+		rgb = color_id.split(' ')
+		shaderID = '%s%s%s' % (rgb[0][5], rgb[1][5], rgb[2][5])
+		if shaderID not in self.shaderDict:
+			return defaultShader
+		else:
+			return self.shaderDict[shaderID]
+
 	
 	def diffSCString(self, color_id):
 	#shader {
