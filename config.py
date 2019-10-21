@@ -42,7 +42,7 @@ class config:
 				print 'set floorShader: %s' % keyvalue[1]
 			elif 'globalShader' == keyvalue[0]:
 				self.globalShader = keyvalue[1]
-				print 'set floorShader: %s' % keyvalue[1]
+				print 'set globalShader: %s' % keyvalue[1]
 			elif 'floorShadow' == keyvalue[0]:
 				self.floorShadow = int(keyvalue[1])
 				print 'set floorShadow: %s' % keyvalue[1]

@@ -21,10 +21,10 @@ def main():
 	cfgfile = sys.argv[1]
 	povfile = sys.argv[2]
 	outSCfile = sys.argv[3]
-	print 'Reading povfile: %s' % povfile 
+	#print 'Reading povfile: %s' % povfile 
 	# read pov file content as a big string
-	with open (povfile, "r") as pf:
-		povContent=pf.read()
+	#with open (povfile, "r") as pf:
+	#	povContent=pf.read()
 	#print povContent
 
 	# read config
@@ -45,7 +45,9 @@ def main():
 		# change fdist before p.camera writing SCString
 		p.globalCamera.dofScale = cfg.dofDist 
 
-	p.parsePov(povContent, outSCfile)		
+	print 'Reading povfile: %s' % povfile 
+	p.parsePovFile(povfile, outSCfile)		
+	#p.parsePov(povContent, outSCfile)		
 	print '%s saved.' % outSCfile
 
 if __name__ == '__main__':

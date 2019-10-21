@@ -57,7 +57,7 @@ class Camera:
 		#t=='spherical':
 		#t=='fisheye':
 		self.attr['fdist'] = 10.0
-		self.attr['lensr'] = 1.5
+		self.attr['lensr'] = 2.2
 
 		
 	def SCString(self):
@@ -379,6 +379,50 @@ class pov:
 		self.globalSCString={'camera':[], '#default':[], 'light_source':[], 
 						'plane':[], 'mesh2':[], 'sphere':[], 'cylinder':[]}
 
+	def povstrline(self, povstr):
+		#titles=['camera', '#default', 'light_source', 'plane', 'mesh2', 'sphere', 'cylinder']
+		titles=['camer', '#defa', 'light', 'plane', 'mesh2', 'spher', 'cylin']
+		poviter = (x[1] for x in groupby(povstr.splitlines(), lambda line: line[:5] in titles))
+		for entry in poviter:
+			name = entry.next()
+			content = ''.join(s.strip() for s in poviter.next())
+			yield '%s %s' % (name.strip(), content)
+
+	# convert pov into sc file
+	def parsePovstr(self, pov_str):
+		t1 = time.time()
+		count = 0
+		for line in self.povstrline(pov_str):
+			if len(line)<2: continue
+			for key in self.dispatch:
+				if key in line[0:15]:
+					count+=1
+					self.globalSCString[key].append(self.dispatch[''.join(key)](line))
+					#if count%1000==0:
+					#	print str(count)+' primitives parsed ...'
+		t2 = time.time()
+		print 'Writing SC information ...\nTime elapsed: %s seconds.' % (str(t2-t1))
+
+		# after get minmax z, before writing camera
+		if self.globalCamera.attr['type'] == 'thinlens':
+			# -1.0 * (min - max) since z is always negative
+			self.globalCamera.attr['fdist'] = -1.0 * (self.globalCamera.dofScale * (self.globalImage.minz - self.globalImage.maxz)/90.0 + self.globalImage.maxz)
+
+
+
+		fout=open('kflow.sc','w')
+		# globalSCString['camera'] stores Image informat not camera
+		# after adding dof, camera SC need to generate after all the geometry parsed.
+		fout.write(''.join(self.globalSCString['camera']))
+		fout.write(self.globalCamera.SCString())
+	#	out.write(''.join(globalSCString['light_source']))
+		fout.write(self.globalShaderFactory.SCString(self.globalImage.attr['globalShader']))
+		fout.write(self.globalImage.floorSCString())
+		fout.write(''.join(self.globalSCString['mesh2']))
+		fout.write(''.join(self.globalSCString['sphere']))
+		fout.write(''.join(self.globalSCString['cylinder']))		
+
+		fout.close()
 
 	# convert pov into sc file
 	def parsePov(self, pov_str):
@@ -424,7 +468,6 @@ class pov:
 		fout.write(''.join(self.globalSCString['cylinder']))		
 
 		fout.close()
-
 
 	def checkLowestPoint(self, pArray):
 		cp = [0.0,0.0,0.0]
@@ -581,6 +624,70 @@ class pov:
 		
 		return ('object {\n\tshader %s\n\ttype generic-mesh\n%s%s%s\tuvs none\n}\n') % (sfShader, sfVectors, sfTriangle, sfNormals)		
 
+	# sphere generator 
+	# http://eugene-eeo.github.io/blog/sphere-triangles.html
+	def _normalize(self, p):
+		s = sum(u*u for u in p) ** 0.5
+		return (p[0]/s, p[1]/s, p[2]/s)
+
+	def _midpoint(self, u, v):
+		return ((u[0]+v[0])/2, (u[1]+v[1])/2, (u[2]+v[2])/2)
+
+	def _subdivide_edge(self, tri, depth):
+		if depth == 0:
+			yield tri
+			return
+		#       p0
+		#      /  \
+		# m01 /....\ m02
+		#    / \  / \
+		#   /___\/___\
+		# p1    m12   p2
+		p0, p1, p2 = tri
+		m01 = self._normalize(self._midpoint(p0, p1))
+		m02 = self._normalize(self._midpoint(p0, p2))
+		m12 = self._normalize(self._midpoint(p1, p2))
+
+		triangles = [
+			(p0,  m01, m02),
+			(m01, p1,  m12),
+			(m02, m12, p2),
+			(m01, m02, m12),
+		]
+		for t in triangles:
+			for tsub in self._subdivide_edge(t, depth-1):
+				yield tsub
+
+	def _subdivide(self, faces, depth):
+		for tri in faces:
+			for trisub in self._subdivide_edge(tri, depth):
+				yield trisub
+
+	def _spheretri(self, shader, transform, n):
+		depth = n
+		# octahedron
+		p = 2**0.5 / 2
+
+		faces = [
+			# top half
+			((0, 1, 0), (-p, 0, p), ( p, 0, p)),
+			((0, 1, 0), ( p, 0, p), ( p, 0,-p)),
+			((0, 1, 0), ( p, 0,-p), (-p, 0,-p)),
+			((0, 1, 0), (-p, 0,-p), (-p, 0, p)),
+
+			# bottom half
+			((0,-1, 0), ( p, 0, p), (-p, 0, p)),
+			((0,-1, 0), ( p, 0,-p), ( p, 0, p)),
+			((0,-1, 0), (-p, 0,-p), ( p, 0,-p)),
+			((0,-1, 0), (-p, 0, p), (-p, 0,-p))
+		]       
+
+		outstr = []
+		for i, t in enumerate(self._subdivide(faces, n)):
+			outstr.append('\nobject {\n\tshader %s\n%s\ttype generic-mesh\n\tpoints 3\n\t\t%.8f %.8f %.8f\n\t\t%.8f %.8f %.8f\n\t\t%.8f %.8f %.8f\n\ttriangles 1\n\t\t0 1 2\n\tnormals vertex\n\t\t%.8f %.8f %.8f\n\t\t%.8f %.8f %.8f\n\t\t%.8f %.8f %.8f\n\tuvs none\n}' % \
+					(shader, transform, t[0][0],t[0][1],t[0][2], t[1][0],t[1][1],t[1][2], t[2][0],t[2][1],t[2][2], \
+					t[0][0],t[0][1],t[0][2], t[1][0],t[1][1],t[1][2], t[2][0],t[2][1],t[2][2]))
+		return '\n'.join(outstr)
 
 	# parse sphere information
 	def parseSphere(self, entry):
@@ -621,8 +728,28 @@ class pov:
 				sfShader = self.globalShaderFactory.assignShaderName(color)
 				break
 
-		return ('\nobject {\n\tshader %s\n\ttype sphere\n\tc %s\n\tr %s\n}') % (sfShader, center, radius)		
+		#return ('\nobject {\n\tshader %s\n\ttype sphere\n\tc %s\n\tr %s\n}') % (sfShader, center, radius)		
+		transform = '\ttransform {\n\t\tscaleu %s\n\t\ttranslate %s\n\t}\n' % (radius, center)
+		return self._spheretri(sfShader, transform, 4)
 
+	# polygon cylinder
+	def _cylindertri(self, shader, transform, n):
+		ins = 6.283184/n # 2*pi/n
+		#r = 1 # default radius
+		# generation points on the fly
+		vertices=[]
+		for i in xrange(0, n):
+			vertices.append('\t\t%.4f %.4f %.4f' % (math.cos(i*ins), math.sin(i*ins),1))
+			vertices.append('\t\t%.4f %.4f %.4f' % (math.cos(i*ins), math.sin(i*ins),-1))
+		points = '\n'.join(vertices)
+		#normals = points
+
+		order =['\t\t%d %d %d' % (k, k+1, k+2) for k in xrange(0,2*n-2)]
+		order.append('\t\t%d %d %d' % (2*n-2, 2*n-1,0))
+		order.append('\t\t%d %d %d' % (2*n-1, 0, 1))
+		
+		return '\nobject {\n\tshader %s\n%s\n\ttype generic-mesh\n\tpoints %d\n%s\n\ttriangles %d\n%s\n\tnormals vertex\n%s\n\tuvs none\n}\n' % \
+				(shader, transform, 2*n, points, 2*n, '\n'.join(order), points)
 
 	# parse cylinder information
 	def parseCylinder(self, entry):
@@ -695,7 +822,9 @@ class pov:
 	#	   }  
 	#	   type cylinder
 	#	}	
-		return ('\nobject {\n\tshader %s\n\ttransform {\n\t\tscale 1 1 %f\n\t\tscaleu %f\n\t\trotatey %f\n\t\trotate %f %f %f %f\n\t\ttranslate %f %f %f\n\t}\n\ttype cylinder\n}') % (sfShader, scalez, scaleu, 180*th/3.1415926, nx, ny, nz, 180-180*phi/3.1415926, center[0], center[1], center[2])
+		#return ('\nobject {\n\tshader %s\n\ttransform {\n\t\tscale 1 1 %f\n\t\tscaleu %f\n\t\trotatey %f\n\t\trotate %f %f %f %f\n\t\ttranslate %f %f %f\n\t}\n\ttype cylinder\n}') % (sfShader, scalez, scaleu, 180*th/3.1415926, nx, ny, nz, 180-180*phi/3.1415926, center[0], center[1], center[2])
+		transform = '\ttransform {\n\t\tscale 1 1 %f\n\t\tscaleu %f\n\t\trotatey %f\n\t\trotate %f %f %f %f\n\t\ttranslate %f %f %f\n\t}\n' % (scalez, scaleu, 180*th/3.1415926, nx, ny, nz, 180-180*phi/3.1415926, center[0], center[1], center[2])
+		return self._cylindertri(sfShader, transform, 16)
 
 
 # kflow end
@@ -720,6 +849,8 @@ class pyKFlowPlugin:
 		# for selection speicific shader
 		self.seleShaderDict = {}
 		self.spColorShaderDict = {}
+
+		self.init_shader_color()
 
 		self.parent = app.root
 		self.dialog = Pmw.Dialog(self.parent,
@@ -935,6 +1066,62 @@ class pyKFlowPlugin:
 	# distroy main window
 	def quit(self):
 		self.dialog.destroy()
+
+	# for shader color
+	def init_shader_color(self):
+		names = [	'red','tv_red','raspberry','darksalmon','salmon','deepsalmon','warmpink','firebrick','ruby','chocolate','brown',
+					'green','tv_green','chartreuse','splitpea','smudge','palegreen','limegreen','lime','limon','forest',
+					'blue','tv_blue','marine','slate','lightblue','skyblue','purpleblue','deepblue','density',
+					'yellow','tv_yellow','paleyellow','yelloworange','limon','wheat','sand',
+					'magenta','lightmagenta','hotpink','pink','lightpink','dirtyviolet','violet','violetpurple','purple','deeppurple',
+					'cyan','palecyan','aquamarine','greencyan','teal','deepteal','lightteal',
+					'orange','tv_orange','brightorange','lightorange','yelloworange','olive','deepolive',
+					'wheat','palegreen','lightblue','paleyellow','lightpink','palecyan','lightorange','bluewhite',
+					'white','grey90','grey80','grey70','grey60','grey50','grey40','grey30','grey20','grey10','black'
+				]
+		shaders = ['diff', 'phong', 'glass', 'mirror', 'shiny']
+		for n in names:
+			# diff
+			rgb = cmd.get_color_tuple(cmd.get_color_index(n))
+			r = (rgb[0]+0.0001) if rgb[0] < 1 else (0.9991)
+			g = (rgb[1]+0.0001) if rgb[1] < 1 else (0.9991)
+			b = (rgb[2]+0.0001) if rgb[2] < 1 else (0.9991)
+			newColor = '%s_diff' % n
+			cmd.set_color(newColor, [r,g,b])		
+
+			# phong
+			rgb = cmd.get_color_tuple(cmd.get_color_index(n))
+			r = (rgb[0]+0.0002) if rgb[0] < 1 else (0.9992)
+			g = (rgb[1]+0.0002) if rgb[1] < 1 else (0.9992)
+			b = (rgb[2]+0.0002) if rgb[2] < 1 else (0.9992)
+			newColor = '%s_phong' % n
+			cmd.set_color(newColor, [r,g,b])		
+
+			# glass
+			rgb = cmd.get_color_tuple(cmd.get_color_index(n))
+			r = (rgb[0]+0.0003) if rgb[0] < 1 else (0.9993)
+			g = (rgb[1]+0.0003) if rgb[1] < 1 else (0.9993)
+			b = (rgb[2]+0.0003) if rgb[2] < 1 else (0.9993)
+			newColor = '%s_glass' % n
+			cmd.set_color(newColor, [r,g,b])		
+
+			# mirror
+			rgb = cmd.get_color_tuple(cmd.get_color_index(n))
+			r = (rgb[0]+0.0004) if rgb[0] < 1 else (0.9994)
+			g = (rgb[1]+0.0004) if rgb[1] < 1 else (0.9994)
+			b = (rgb[2]+0.0004) if rgb[2] < 1 else (0.9994)
+			newColor = '%s_mirror' % n
+			cmd.set_color(newColor, [r,g,b])		
+
+			# shiny
+			rgb = cmd.get_color_tuple(cmd.get_color_index(n))
+			r = (rgb[0]+0.0005) if rgb[0] < 1 else (0.9995)
+			g = (rgb[1]+0.0005) if rgb[1] < 1 else (0.9995)
+			b = (rgb[2]+0.0005) if rgb[2] < 1 else (0.9995)
+			newColor = '%s_shiny' % n
+			cmd.set_color(newColor, [r,g,b])		
+
+		print 'shader colors init done.'
 
 	# clean all the shader settings in (selection shader tab)
 	def unsetShader(self):
@@ -1200,7 +1387,8 @@ class pyKFlowPlugin:
 			# change fdist before p.camera writing SCString
 			self.p.globalCamera.dofScale = self.dofDist 
 
-		self.p.parsePov(''.join([pov_header, pov_body]))		
+		#self.p.parsePov(''.join([pov_header, pov_body]))		
+		self.p.parsePovstr('%s%s' % (pov_header, pov_body))		
 		self.console.set('%28s' % ('kflow.sc saved.'))
 
 
