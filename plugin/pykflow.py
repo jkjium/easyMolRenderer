@@ -379,6 +379,162 @@ class pov:
 		self.globalSCString={'camera':[], '#default':[], 'light_source':[], 
 						'plane':[], 'mesh2':[], 'sphere':[], 'cylinder':[]}
 
+		self.spherestr = self._spherestr4()
+		# generated from unit cylinder generator: self._cylindertri(sfShader, transform, 16)
+		# combined with prefix string to form a complete cylinder object in .sc file
+		self.cylinderstr = """	type generic-mesh
+	points 32
+		1.0000 0.0000 1.0000
+		1.0000 0.0000 -1.0000
+		0.9239 0.3827 1.0000
+		0.9239 0.3827 -1.0000
+		0.7071 0.7071 1.0000
+		0.7071 0.7071 -1.0000
+		0.3827 0.9239 1.0000
+		0.3827 0.9239 -1.0000
+		0.0000 1.0000 1.0000
+		0.0000 1.0000 -1.0000
+		-0.3827 0.9239 1.0000
+		-0.3827 0.9239 -1.0000
+		-0.7071 0.7071 1.0000
+		-0.7071 0.7071 -1.0000
+		-0.9239 0.3827 1.0000
+		-0.9239 0.3827 -1.0000
+		-1.0000 0.0000 1.0000
+		-1.0000 0.0000 -1.0000
+		-0.9239 -0.3827 1.0000
+		-0.9239 -0.3827 -1.0000
+		-0.7071 -0.7071 1.0000
+		-0.7071 -0.7071 -1.0000
+		-0.3827 -0.9239 1.0000
+		-0.3827 -0.9239 -1.0000
+		-0.0000 -1.0000 1.0000
+		-0.0000 -1.0000 -1.0000
+		0.3827 -0.9239 1.0000
+		0.3827 -0.9239 -1.0000
+		0.7071 -0.7071 1.0000
+		0.7071 -0.7071 -1.0000
+		0.9239 -0.3827 1.0000
+		0.9239 -0.3827 -1.0000
+	triangles 32
+		0 1 2
+		1 2 3
+		2 3 4
+		3 4 5
+		4 5 6
+		5 6 7
+		6 7 8
+		7 8 9
+		8 9 10
+		9 10 11
+		10 11 12
+		11 12 13
+		12 13 14
+		13 14 15
+		14 15 16
+		15 16 17
+		16 17 18
+		17 18 19
+		18 19 20
+		19 20 21
+		20 21 22
+		21 22 23
+		22 23 24
+		23 24 25
+		24 25 26
+		25 26 27
+		26 27 28
+		27 28 29
+		28 29 30
+		29 30 31
+		30 31 0
+		31 0 1
+	normals vertex
+		1.0000 0.0000 1.0000
+		1.0000 0.0000 -1.0000
+		0.9239 0.3827 1.0000
+		0.9239 0.3827 -1.0000
+		0.7071 0.7071 1.0000
+		0.7071 0.7071 -1.0000
+		0.3827 0.9239 1.0000
+		0.3827 0.9239 -1.0000
+		0.0000 1.0000 1.0000
+		0.0000 1.0000 -1.0000
+		-0.3827 0.9239 1.0000
+		-0.3827 0.9239 -1.0000
+		-0.7071 0.7071 1.0000
+		-0.7071 0.7071 -1.0000
+		-0.9239 0.3827 1.0000
+		-0.9239 0.3827 -1.0000
+		-1.0000 0.0000 1.0000
+		-1.0000 0.0000 -1.0000
+		-0.9239 -0.3827 1.0000
+		-0.9239 -0.3827 -1.0000
+		-0.7071 -0.7071 1.0000
+		-0.7071 -0.7071 -1.0000
+		-0.3827 -0.9239 1.0000
+		-0.3827 -0.9239 -1.0000
+		-0.0000 -1.0000 1.0000
+		-0.0000 -1.0000 -1.0000
+		0.3827 -0.9239 1.0000
+		0.3827 -0.9239 -1.0000
+		0.7071 -0.7071 1.0000
+		0.7071 -0.7071 -1.0000
+		0.9239 -0.3827 1.0000
+		0.9239 -0.3827 -1.0000
+	uvs none
+}"""
+
+	# unit cylinder primitive generator
+	def _cylindertri(self, shader, transform, n):
+		ins = 6.283184/n # 2*pi/n
+		#r = 1 # default radius
+		# generation points on the fly
+		vertices=[]
+		for i in xrange(0, n):
+			vertices.append('\t\t%.4f %.4f %.4f' % (math.cos(i*ins), math.sin(i*ins),1))
+			vertices.append('\t\t%.4f %.4f %.4f' % (math.cos(i*ins), math.sin(i*ins),-1))
+		points = '\n'.join(vertices)
+		#normals = points
+
+		order =['\t\t%d %d %d' % (k, k+1, k+2) for k in xrange(0,2*n-2)]
+		order.append('\t\t%d %d %d' % (2*n-2, 2*n-1,0))
+		order.append('\t\t%d %d %d' % (2*n-1, 0, 1))
+		
+		return '\nobject {\n\tshader %s\n%s\n\ttype generic-mesh\n\tpoints %d\n%s\n\ttriangles %d\n%s\n\tnormals vertex\n%s\n\tuvs none\n}\n' % \
+				(shader, transform, 2*n, points, 2*n, '\n'.join(order), points)
+
+	def _spherestr4(self):
+		# octahedron
+		p = 2**0.5 / 2
+
+		faces = [
+			# top half
+			((0, 1, 0), (-p, 0, p), ( p, 0, p)),
+			((0, 1, 0), ( p, 0, p), ( p, 0,-p)),
+			((0, 1, 0), ( p, 0,-p), (-p, 0,-p)),
+			((0, 1, 0), (-p, 0,-p), (-p, 0, p)),
+
+			# bottom half
+			((0,-1, 0), ( p, 0, p), (-p, 0, p)),
+			((0,-1, 0), ( p, 0,-p), ( p, 0, p)),
+			((0,-1, 0), (-p, 0,-p), ( p, 0,-p)),
+			((0,-1, 0), (-p, 0, p), (-p, 0,-p))
+		]       
+
+		vertices = []
+		triangles = []
+		c=0
+		for i, t in enumerate(self._subdivide(faces, 4)):
+			vertices.append('\t\t%.8f %.8f %.8f\n\t\t%.8f %.8f %.8f\n\t\t%.8f %.8f %.8f' % (t[0][0],t[0][1],t[0][2], t[1][0],t[1][1],t[1][2], t[2][0],t[2][1],t[2][2]))
+			triangles.append('\t\t%d %d %d' % (c, c+1, c+2))
+			c+=3
+			# normals vertex = vertices
+		points='\n'.join(vertices)
+		outstr= '%s\n\ttriangles 2048\n%s\n\tnormals vertex\n%s\n\tuvs none\n}' % (points, '\n'.join(triangles), points)
+		return outstr
+
+
 	def povstrline(self, povstr):
 		#titles=['camera', '#default', 'light_source', 'plane', 'mesh2', 'sphere', 'cylinder']
 		titles=['camer', '#defa', 'light', 'plane', 'mesh2', 'spher', 'cylin']
@@ -730,7 +886,7 @@ class pov:
 
 		#return ('\nobject {\n\tshader %s\n\ttype sphere\n\tc %s\n\tr %s\n}') % (sfShader, center, radius)		
 		transform = '\ttransform {\n\t\tscaleu %s\n\t\ttranslate %s\n\t}\n' % (radius, center)
-		return self._spheretri(sfShader, transform, 4)
+		return '\nobject {\n\tshader %s\n%s\ttype generic-mesh\n\tpoints 6144\n%s' % (sfShader, transform, self.spherestr)
 
 	# polygon cylinder
 	def _cylindertri(self, shader, transform, n):
@@ -822,10 +978,8 @@ class pov:
 	#	   }  
 	#	   type cylinder
 	#	}	
-		#return ('\nobject {\n\tshader %s\n\ttransform {\n\t\tscale 1 1 %f\n\t\tscaleu %f\n\t\trotatey %f\n\t\trotate %f %f %f %f\n\t\ttranslate %f %f %f\n\t}\n\ttype cylinder\n}') % (sfShader, scalez, scaleu, 180*th/3.1415926, nx, ny, nz, 180-180*phi/3.1415926, center[0], center[1], center[2])
-		transform = '\ttransform {\n\t\tscale 1 1 %f\n\t\tscaleu %f\n\t\trotatey %f\n\t\trotate %f %f %f %f\n\t\ttranslate %f %f %f\n\t}\n' % (scalez, scaleu, 180*th/3.1415926, nx, ny, nz, 180-180*phi/3.1415926, center[0], center[1], center[2])
-		return self._cylindertri(sfShader, transform, 16)
-
+		transform = '\ttransform {\n\t\tscale 1 1 %f\n\t\tscaleu %f\n\t\trotatey %f\n\t\trotate %f %f %f %f\n\t\ttranslate %f %f %f\n\t}' % (scalez, scaleu, 180*th/3.1415926, nx, ny, nz, 180-180*phi/3.1415926, center[0], center[1], center[2])
+		return '\nobject {\n\tshader %s\n%s\n%s' % (sfShader, transform, self.cylinderstr)
 
 # kflow end
 
