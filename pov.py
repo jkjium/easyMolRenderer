@@ -32,107 +32,59 @@ class pov:
 		self.spherestr = self._spherestr4()
 		# generated from unit cylinder generator: self._cylindertri(sfShader, transform, 16)
 		# combined with prefix string to form a complete cylinder object in .sc file
-		self.cylinderstr = """	type generic-mesh
-	points 32
-		1.0000 0.0000 1.0000
-		1.0000 0.0000 -1.0000
-		0.9239 0.3827 1.0000
-		0.9239 0.3827 -1.0000
-		0.7071 0.7071 1.0000
-		0.7071 0.7071 -1.0000
-		0.3827 0.9239 1.0000
-		0.3827 0.9239 -1.0000
-		0.0000 1.0000 1.0000
-		0.0000 1.0000 -1.0000
-		-0.3827 0.9239 1.0000
-		-0.3827 0.9239 -1.0000
-		-0.7071 0.7071 1.0000
-		-0.7071 0.7071 -1.0000
-		-0.9239 0.3827 1.0000
-		-0.9239 0.3827 -1.0000
-		-1.0000 0.0000 1.0000
-		-1.0000 0.0000 -1.0000
-		-0.9239 -0.3827 1.0000
-		-0.9239 -0.3827 -1.0000
-		-0.7071 -0.7071 1.0000
-		-0.7071 -0.7071 -1.0000
-		-0.3827 -0.9239 1.0000
-		-0.3827 -0.9239 -1.0000
-		-0.0000 -1.0000 1.0000
-		-0.0000 -1.0000 -1.0000
-		0.3827 -0.9239 1.0000
-		0.3827 -0.9239 -1.0000
-		0.7071 -0.7071 1.0000
-		0.7071 -0.7071 -1.0000
-		0.9239 -0.3827 1.0000
-		0.9239 -0.3827 -1.0000
-	triangles 32
-		0 1 2
-		1 2 3
-		2 3 4
-		3 4 5
-		4 5 6
-		5 6 7
-		6 7 8
-		7 8 9
-		8 9 10
-		9 10 11
-		10 11 12
-		11 12 13
-		12 13 14
-		13 14 15
-		14 15 16
-		15 16 17
-		16 17 18
-		17 18 19
-		18 19 20
-		19 20 21
-		20 21 22
-		21 22 23
-		22 23 24
-		23 24 25
-		24 25 26
-		25 26 27
-		26 27 28
-		27 28 29
-		28 29 30
-		29 30 31
-		30 31 0
-		31 0 1
-	normals vertex
-		1.0000 0.0000 1.0000
-		1.0000 0.0000 -1.0000
-		0.9239 0.3827 1.0000
-		0.9239 0.3827 -1.0000
-		0.7071 0.7071 1.0000
-		0.7071 0.7071 -1.0000
-		0.3827 0.9239 1.0000
-		0.3827 0.9239 -1.0000
-		0.0000 1.0000 1.0000
-		0.0000 1.0000 -1.0000
-		-0.3827 0.9239 1.0000
-		-0.3827 0.9239 -1.0000
-		-0.7071 0.7071 1.0000
-		-0.7071 0.7071 -1.0000
-		-0.9239 0.3827 1.0000
-		-0.9239 0.3827 -1.0000
-		-1.0000 0.0000 1.0000
-		-1.0000 0.0000 -1.0000
-		-0.9239 -0.3827 1.0000
-		-0.9239 -0.3827 -1.0000
-		-0.7071 -0.7071 1.0000
-		-0.7071 -0.7071 -1.0000
-		-0.3827 -0.9239 1.0000
-		-0.3827 -0.9239 -1.0000
-		-0.0000 -1.0000 1.0000
-		-0.0000 -1.0000 -1.0000
-		0.3827 -0.9239 1.0000
-		0.3827 -0.9239 -1.0000
-		0.7071 -0.7071 1.0000
-		0.7071 -0.7071 -1.0000
-		0.9239 -0.3827 1.0000
-		0.9239 -0.3827 -1.0000
-	uvs none
+		self.cylinderstr = """	        type generic-mesh
+        points 16
+                1.0000 0.0000 1.0000
+                1.0000 0.0000 -1.0000
+                0.7071 0.7071 1.0000
+                0.7071 0.7071 -1.0000
+                0.0000 1.0000 1.0000
+                0.0000 1.0000 -1.0000
+                -0.7071 0.7071 1.0000
+                -0.7071 0.7071 -1.0000
+                -1.0000 0.0000 1.0000
+                -1.0000 0.0000 -1.0000
+                -0.7071 -0.7071 1.0000
+                -0.7071 -0.7071 -1.0000
+                -0.0000 -1.0000 1.0000
+                -0.0000 -1.0000 -1.0000
+                0.7071 -0.7071 1.0000
+                0.7071 -0.7071 -1.0000
+        triangles 16
+                0 1 2
+                1 2 3
+                2 3 4
+                3 4 5
+                4 5 6
+                5 6 7
+                6 7 8
+                7 8 9
+                8 9 10
+                9 10 11
+                10 11 12
+                11 12 13
+                12 13 14
+                13 14 15
+                14 15 0
+                15 0 1
+        normals vertex
+                1.0000 0.0000 1.0000
+                1.0000 0.0000 -1.0000
+                0.7071 0.7071 1.0000
+                0.7071 0.7071 -1.0000
+                0.0000 1.0000 1.0000
+                0.0000 1.0000 -1.0000
+                -0.7071 0.7071 1.0000
+                -0.7071 0.7071 -1.0000
+                -1.0000 0.0000 1.0000
+                -1.0000 0.0000 -1.0000
+                -0.7071 -0.7071 1.0000
+                -0.7071 -0.7071 -1.0000
+                -0.0000 -1.0000 1.0000
+                -0.0000 -1.0000 -1.0000
+                0.7071 -0.7071 1.0000
+                0.7071 -0.7071 -1.0000
+        uvs none
 }"""
 
 	# unit cylinder primitive generator
@@ -183,51 +135,6 @@ class pov:
 		points='\n'.join(vertices)
 		outstr= '%s\n\ttriangles 2048\n%s\n\tnormals vertex\n%s\n\tuvs none\n}' % (points, '\n'.join(triangles), points)
 		return outstr
-
-	# convert pov into sc file
-	def parsePov(self, pov_str, scfile):
-		print '\nStart parsing PovRay primitives ...'
-		pov_str=pov_str.replace('\n',' ').replace('\r','')
-		for key in self.dispatch.keys():
-			pov_str = pov_str.replace(key, '\n'+key)
-
-		buf = StringIO.StringIO(pov_str)
-		povlines = buf.readlines()
-		#povlines = pov_str.split('\n')
-
-		t1 = time.time()
-		count = 0
-		for line in povlines:
-			line = line.strip()
-			if len(line)<2: continue
-			for key in self.dispatch.keys():
-				if key in line[0:15]:
-					count+=1
-					self.globalSCString[key].append(self.dispatch[''.join(key)](line))
-					if count%1000==0:
-						print str(count)+' primitives parsed ...'
-		t2 = time.time()
-		print '\nTime elapsed: %s seconds.' % (str(t2-t1))
-		print '\nWriting SC information ... '
-
-		# after get minmax z, before writing camera
-		if self.globalCamera.attr['type'] == 'thinlens':
-			# -1.0 * (min - max) since z is always negative
-			self.globalCamera.attr['fdist'] = -1.0 * (self.globalCamera.dofScale * (self.globalImage.minz - self.globalImage.maxz)/90.0 + self.globalImage.maxz)
-
-		fout=open(scfile,'w')
-		# globalSCString['camera'] stores Image informat not camera
-		# after adding dof, camera SC need to generate after all the geometry parsed.
-		fout.write(''.join(self.globalSCString['camera']))
-		fout.write(self.globalCamera.SCString())
-	#	out.write(''.join(globalSCString['light_source']))
-		fout.write(self.globalShaderFactory.SCString(self.globalImage.attr['globalShader']))
-		fout.write(self.globalImage.floorSCString())
-		fout.write(''.join(self.globalSCString['mesh2']))
-		fout.write(''.join(self.globalSCString['sphere']))
-		fout.write(''.join(self.globalSCString['cylinder']))		
-
-		fout.close()
 
 	# pov line iterator
 	# cannot catch 'plane' and 'light_source'
