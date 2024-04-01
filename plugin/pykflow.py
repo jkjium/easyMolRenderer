@@ -1,18 +1,30 @@
 import warnings
 import os 
+import sys
 import shutil
 import subprocess
-import Tkinter
-import tkSimpleDialog
-import tkMessageBox
-import tkFileDialog
+if sys.version_info[0] < 3:
+    import Tkinter
+    import tkSimpleDialog
+    import tkMessageBox
+    import tkFileDialog
+    import tkColorChooser
+else:
+    import tkinter as Tkinter
+    import tkinter.simpledialog as tkSimpleDialog
+    import tkinter.messagebox as tkMessageBox
+    import tkinter.filedialog as tkFileDialog
+    import tkinter.colorchooser as tkColorChooser
 import Pmw
-import tkColorChooser
 from pymol import cmd
 from types import *
 import time
 import math
-import StringIO
+#import StringIO
+try:
+	from StringIO import StringIO ## for Python 2
+except ImportError:
+	from io import StringIO ## for Python 3
 import re
 
 try:
@@ -379,114 +391,6 @@ class pov:
 		self.globalSCString={'camera':[], '#default':[], 'light_source':[], 
 						'plane':[], 'mesh2':[], 'sphere':[], 'cylinder':[]}
 
-		self.spherestr = self._spherestr4()
-		# generated from unit cylinder generator: self._cylindertri(sfShader, transform, 16)
-		# combined with prefix string to form a complete cylinder object in .sc file
-		self.cylinderstr = """	        type generic-mesh
-        points 16
-                1.0000 0.0000 1.0000
-                1.0000 0.0000 -1.0000
-                0.7071 0.7071 1.0000
-                0.7071 0.7071 -1.0000
-                0.0000 1.0000 1.0000
-                0.0000 1.0000 -1.0000
-                -0.7071 0.7071 1.0000
-                -0.7071 0.7071 -1.0000
-                -1.0000 0.0000 1.0000
-                -1.0000 0.0000 -1.0000
-                -0.7071 -0.7071 1.0000
-                -0.7071 -0.7071 -1.0000
-                -0.0000 -1.0000 1.0000
-                -0.0000 -1.0000 -1.0000
-                0.7071 -0.7071 1.0000
-                0.7071 -0.7071 -1.0000
-        triangles 16
-                0 1 2
-                1 2 3
-                2 3 4
-                3 4 5
-                4 5 6
-                5 6 7
-                6 7 8
-                7 8 9
-                8 9 10
-                9 10 11
-                10 11 12
-                11 12 13
-                12 13 14
-                13 14 15
-                14 15 0
-                15 0 1
-        normals vertex
-                1.0000 0.0000 1.0000
-                1.0000 0.0000 -1.0000
-                0.7071 0.7071 1.0000
-                0.7071 0.7071 -1.0000
-                0.0000 1.0000 1.0000
-                0.0000 1.0000 -1.0000
-                -0.7071 0.7071 1.0000
-                -0.7071 0.7071 -1.0000
-                -1.0000 0.0000 1.0000
-                -1.0000 0.0000 -1.0000
-                -0.7071 -0.7071 1.0000
-                -0.7071 -0.7071 -1.0000
-                -0.0000 -1.0000 1.0000
-                -0.0000 -1.0000 -1.0000
-                0.7071 -0.7071 1.0000
-                0.7071 -0.7071 -1.0000
-        uvs none
-}"""
-
-	# unit cylinder primitive generator
-	def _cylindertri(self, shader, transform, n):
-		ins = 6.283184/n # 2*pi/n
-		#r = 1 # default radius
-		# generation points on the fly
-		vertices=[]
-		for i in xrange(0, n):
-			vertices.append('\t\t%.4f %.4f %.4f' % (math.cos(i*ins), math.sin(i*ins),1))
-			vertices.append('\t\t%.4f %.4f %.4f' % (math.cos(i*ins), math.sin(i*ins),-1))
-		points = '\n'.join(vertices)
-		#normals = points
-
-		order =['\t\t%d %d %d' % (k, k+1, k+2) for k in xrange(0,2*n-2)]
-		order.append('\t\t%d %d %d' % (2*n-2, 2*n-1,0))
-		order.append('\t\t%d %d %d' % (2*n-1, 0, 1))
-		
-		return '\nobject {\n\tshader %s\n%s\n\ttype generic-mesh\n\tpoints %d\n%s\n\ttriangles %d\n%s\n\tnormals vertex\n%s\n\tuvs none\n}\n' % \
-				(shader, transform, 2*n, points, 2*n, '\n'.join(order), points)
-
-	def _spherestr4(self):
-		# octahedron
-		p = 2**0.5 / 2
-
-		faces = [
-			# top half
-			((0, 1, 0), (-p, 0, p), ( p, 0, p)),
-			((0, 1, 0), ( p, 0, p), ( p, 0,-p)),
-			((0, 1, 0), ( p, 0,-p), (-p, 0,-p)),
-			((0, 1, 0), (-p, 0,-p), (-p, 0, p)),
-
-			# bottom half
-			((0,-1, 0), ( p, 0, p), (-p, 0, p)),
-			((0,-1, 0), ( p, 0,-p), ( p, 0, p)),
-			((0,-1, 0), (-p, 0,-p), ( p, 0,-p)),
-			((0,-1, 0), (-p, 0, p), (-p, 0,-p))
-		]       
-
-		vertices = []
-		triangles = []
-		c=0
-		for i, t in enumerate(self._subdivide(faces, 3)):
-			vertices.append('\t\t%.8f %.8f %.8f\n\t\t%.8f %.8f %.8f\n\t\t%.8f %.8f %.8f' % (t[0][0],t[0][1],t[0][2], t[1][0],t[1][1],t[1][2], t[2][0],t[2][1],t[2][2]))
-			triangles.append('\t\t%d %d %d' % (c, c+1, c+2))
-			c+=3
-			# normals vertex = vertices
-		points='\n'.join(vertices)
-		outstr= '%s\n\ttriangles 512\n%s\n\tnormals vertex\n%s\n\tuvs none\n}' % (points, '\n'.join(triangles), points)
-		return outstr
-
-
 	def povstrline(self, povstr):
 		#titles=['camera', '#default', 'light_source', 'plane', 'mesh2', 'sphere', 'cylinder']
 		titles=['camer', '#defa', 'light', 'plane', 'mesh2', 'spher', 'cylin']
@@ -509,7 +413,7 @@ class pov:
 					#if count%1000==0:
 					#	print str(count)+' primitives parsed ...'
 		t2 = time.time()
-		print 'Writing SC information ...\nTime elapsed: %s seconds.' % (str(t2-t1))
+		print('Writing SC information ...\nTime elapsed: %s seconds.' % (str(t2-t1)))
 
 		# after get minmax z, before writing camera
 		if self.globalCamera.attr['type'] == 'thinlens':
@@ -538,7 +442,8 @@ class pov:
 		for key in self.dispatch.keys():
 			pov_str = pov_str.replace(key, '\n'+key)
 
-		buf = StringIO.StringIO(pov_str)
+		#buf = StringIO.StringIO(pov_str)
+		buf = StringIO(pov_str)
 		povlines = buf.readlines()
 		#povlines = pov_str.split('\n')
 
@@ -554,7 +459,7 @@ class pov:
 					#if count%1000==0:
 					#	print str(count)+' primitives parsed ...'
 		t2 = time.time()
-		print 'Writing SC information ...\nTime elapsed: %s seconds.' % (str(t2-t1))
+		print('Writing SC information ...\nTime elapsed: %s seconds.' % (str(t2-t1)))
 
 		# after get minmax z, before writing camera
 		if self.globalCamera.attr['type'] == 'thinlens':
@@ -590,7 +495,7 @@ class pov:
 	def parseCamera(self, entry):
 		N=len(entry)
 		locationIdx = entry.find('location')
-		for i in xrange(locationIdx+8,N):
+		for i in range(locationIdx+8,N):
 			if entry[i]=='<':
 				j=i+1
 				while entry[j]!='>': j+=1
@@ -599,7 +504,7 @@ class pov:
 				break
 		endPoint = j
 		rightIdx = entry[endPoint:N].find('right')+endPoint
-		for i in xrange(rightIdx, N):
+		for i in range(rightIdx, N):
 			if entry[i].isdigit() == True:
 				j=i+1
 				while entry[j]!='*': j+=1
@@ -608,7 +513,7 @@ class pov:
 				break
 		endPoint = j
 		upIdx = entry[endPoint:N].find('up')+endPoint
-		for i in xrange(upIdx, N):
+		for i in range(upIdx, N):
 			if (entry[i].isalpha() == True) and (entry[i] in 'xyz'):
 				if entry[i]=='x':
 					up = '1.0 0.0 0.0'
@@ -649,14 +554,14 @@ class pov:
 	def parseLightSource(self, entry):
 		N=len(entry)
 
-		for i in xrange(0, N):
+		for i in range(0, N):
 			if entry[i]=='<':
 				j=i+1
 				while entry[j]!='>':j+=1
 				point = entry[i+1:j].replace(',', ' ') # find light location
 				break
 		endPoint = j
-		for i in xrange(endPoint,N):
+		for i in range(endPoint,N):
 			if entry[i]=='<':
 				j=i+1
 				while entry[j]!='>':j+=1
@@ -681,7 +586,7 @@ class pov:
 		
 		vertexIdx = entry.find('vertex_vectors')
 		# parse vertex
-		for i in xrange(vertexIdx+15, N): #mesh2 { vertex_vectors { 3, <-5.3871469498,-5.4616031647,-69.2255630493>, <-5.5629453659,-6.2845845222,-68.7088241577>, <-5.7161660194,-5.9352922440,-69.4062881470>}  
+		for i in range(vertexIdx+15, N): #mesh2 { vertex_vectors { 3, <-5.3871469498,-5.4616031647,-69.2255630493>, <-5.5629453659,-6.2845845222,-68.7088241577>, <-5.7161660194,-5.9352922440,-69.4062881470>}  
 			if entry[i]=='}': # sign for vertex_vectors section end
 				break
 			if entry[i]=='<':
@@ -696,7 +601,7 @@ class pov:
 		# parse normals
 		sfNormals = '\tnormals vertex\n'
 		normalIdx = entry[endPoint:N].find('normal_vectors')+endPoint
-		for i in xrange(normalIdx+15, N): #normal_vectors { 3, <-0.8562379479,0.3649974763,0.3655590415>, <-0.8029828072,0.3864040971,0.4537735879>, <-0.8294824362,0.4455040097,0.3368754089>} 
+		for i in range(normalIdx+15, N): #normal_vectors { 3, <-0.8562379479,0.3649974763,0.3655590415>, <-0.8029828072,0.3864040971,0.4537735879>, <-0.8294824362,0.4455040097,0.3368754089>} 
 			if entry[i]=='}': # sign for vertex_vectors section end
 				break
 			if entry[i]=='<':
@@ -708,7 +613,7 @@ class pov:
 		endPoint = j
 		sfShader = ''
 		pigmentIdx = entry[endPoint:N].find('pigment')+endPoint
-		for i in xrange(pigmentIdx+7,N): #texture_list { 3, texture { pigment{color rgb<0.00201,0.0000,1.0000> }} ,texture { pigment{color rgb<0.00201,0.0000,1.0000> }} ,texture { pigment{color rgb<0.00201,0.0000,1.0000> }} } 
+		for i in range(pigmentIdx+7,N): #texture_list { 3, texture { pigment{color rgb<0.00201,0.0000,1.0000> }} ,texture { pigment{color rgb<0.00201,0.0000,1.0000> }} ,texture { pigment{color rgb<0.00201,0.0000,1.0000> }} } 
 			if entry[i]=='<':
 				j=i+1
 				while entry[j]!='>': j+=1
@@ -722,7 +627,7 @@ class pov:
 		# parse face order
 		sfTriangle = '\ttriangles 1\n'
 		faceIdx = entry[endPoint:N].find('face_indices')+endPoint
-		for i in xrange(faceIdx,N):  #face_indices { 1, <0,1,2>, 0, 1, 2 } } 
+		for i in range(faceIdx,N):  #face_indices { 1, <0,1,2>, 0, 1, 2 } } 
 			if entry[i]=='<':
 				j=i+1
 				while entry[j]!='>': j+=1
@@ -732,70 +637,6 @@ class pov:
 		
 		return ('object {\n\tshader %s\n\ttype generic-mesh\n%s%s%s\tuvs none\n}\n') % (sfShader, sfVectors, sfTriangle, sfNormals)		
 
-	# sphere generator 
-	# http://eugene-eeo.github.io/blog/sphere-triangles.html
-	def _normalize(self, p):
-		s = sum(u*u for u in p) ** 0.5
-		return (p[0]/s, p[1]/s, p[2]/s)
-
-	def _midpoint(self, u, v):
-		return ((u[0]+v[0])/2, (u[1]+v[1])/2, (u[2]+v[2])/2)
-
-	def _subdivide_edge(self, tri, depth):
-		if depth == 0:
-			yield tri
-			return
-		#       p0
-		#      /  \
-		# m01 /....\ m02
-		#    / \  / \
-		#   /___\/___\
-		# p1    m12   p2
-		p0, p1, p2 = tri
-		m01 = self._normalize(self._midpoint(p0, p1))
-		m02 = self._normalize(self._midpoint(p0, p2))
-		m12 = self._normalize(self._midpoint(p1, p2))
-
-		triangles = [
-			(p0,  m01, m02),
-			(m01, p1,  m12),
-			(m02, m12, p2),
-			(m01, m02, m12),
-		]
-		for t in triangles:
-			for tsub in self._subdivide_edge(t, depth-1):
-				yield tsub
-
-	def _subdivide(self, faces, depth):
-		for tri in faces:
-			for trisub in self._subdivide_edge(tri, depth):
-				yield trisub
-
-	def _spheretri(self, shader, transform, n):
-		depth = n
-		# octahedron
-		p = 2**0.5 / 2
-
-		faces = [
-			# top half
-			((0, 1, 0), (-p, 0, p), ( p, 0, p)),
-			((0, 1, 0), ( p, 0, p), ( p, 0,-p)),
-			((0, 1, 0), ( p, 0,-p), (-p, 0,-p)),
-			((0, 1, 0), (-p, 0,-p), (-p, 0, p)),
-
-			# bottom half
-			((0,-1, 0), ( p, 0, p), (-p, 0, p)),
-			((0,-1, 0), ( p, 0,-p), ( p, 0, p)),
-			((0,-1, 0), (-p, 0,-p), ( p, 0,-p)),
-			((0,-1, 0), (-p, 0, p), (-p, 0,-p))
-		]       
-
-		outstr = []
-		for i, t in enumerate(self._subdivide(faces, n)):
-			outstr.append('\nobject {\n\tshader %s\n%s\ttype generic-mesh\n\tpoints 3\n\t\t%.8f %.8f %.8f\n\t\t%.8f %.8f %.8f\n\t\t%.8f %.8f %.8f\n\ttriangles 1\n\t\t0 1 2\n\tnormals vertex\n\t\t%.8f %.8f %.8f\n\t\t%.8f %.8f %.8f\n\t\t%.8f %.8f %.8f\n\tuvs none\n}' % \
-					(shader, transform, t[0][0],t[0][1],t[0][2], t[1][0],t[1][1],t[1][2], t[2][0],t[2][1],t[2][2], \
-					t[0][0],t[0][1],t[0][2], t[1][0],t[1][1],t[1][2], t[2][0],t[2][1],t[2][2]))
-		return '\n'.join(outstr)
 
 	# parse sphere information
 	def parseSphere(self, entry):
@@ -810,7 +651,7 @@ class pov:
 		
 		# read center vector
 		centerIdx = entry.find('<')
-		for i in xrange(centerIdx,N):
+		for i in range(centerIdx,N):
 			if entry[i]=='>':
 				center = entry[centerIdx+1:i].replace(',',' ')
 				# for finding the lowest point
@@ -818,7 +659,7 @@ class pov:
 				break
 		endPoint = i
 		# read radius
-		for i in xrange(endPoint, N):
+		for i in range(endPoint, N):
 			if entry[i].isdigit() == True:
 				j=i+1
 				while entry[j].isdigit() or entry[j]=='.': j+=1
@@ -828,7 +669,7 @@ class pov:
 		endPoint = j
 		sfShader = ''
 		pigmentIdx = entry[endPoint:N].find('pigment')+endPoint
-		for i in xrange(pigmentIdx, N):
+		for i in range(pigmentIdx, N):
 			if entry[i]=='<':
 				j=i+1
 				while entry[j]!='>': j+=1
@@ -836,28 +677,8 @@ class pov:
 				sfShader = self.globalShaderFactory.assignShaderName(color)
 				break
 
-		#return ('\nobject {\n\tshader %s\n\ttype sphere\n\tc %s\n\tr %s\n}') % (sfShader, center, radius)		
-		transform = '\ttransform {\n\t\tscaleu %s\n\t\ttranslate %s\n\t}\n' % (radius, center)
-		return '\nobject {\n\tshader %s\n%s\ttype generic-mesh\n\tpoints 1536\n%s' % (sfShader, transform, self.spherestr)
+		return ('\nobject {\n\tshader %s\n\ttype sphere\n\tc %s\n\tr %s\n}') % (sfShader, center, radius)		
 
-	# polygon cylinder
-	def _cylindertri(self, shader, transform, n):
-		ins = 6.283184/n # 2*pi/n
-		#r = 1 # default radius
-		# generation points on the fly
-		vertices=[]
-		for i in xrange(0, n):
-			vertices.append('\t\t%.4f %.4f %.4f' % (math.cos(i*ins), math.sin(i*ins),1))
-			vertices.append('\t\t%.4f %.4f %.4f' % (math.cos(i*ins), math.sin(i*ins),-1))
-		points = '\n'.join(vertices)
-		#normals = points
-
-		order =['\t\t%d %d %d' % (k, k+1, k+2) for k in xrange(0,2*n-2)]
-		order.append('\t\t%d %d %d' % (2*n-2, 2*n-1,0))
-		order.append('\t\t%d %d %d' % (2*n-1, 0, 1))
-		
-		return '\nobject {\n\tshader %s\n%s\n\ttype generic-mesh\n\tpoints %d\n%s\n\ttriangles %d\n%s\n\tnormals vertex\n%s\n\tuvs none\n}\n' % \
-				(shader, transform, 2*n, points, 2*n, '\n'.join(order), points)
 
 	# parse cylinder information
 	def parseCylinder(self, entry):
@@ -865,19 +686,19 @@ class pov:
 		vertexIdx = entry.find('vertex_vectors')
 		# parse vertex
 		p1Idx = entry.find('<')
-		for i in xrange(p1Idx,N):
+		for i in range(p1Idx,N):
 			if entry[i]=='>':
 				p1 = entry[p1Idx+1:i].replace(',',' ')
 				break
 		endPoint = i	
-		for i in xrange(endPoint, N):
+		for i in range(endPoint, N):
 			if entry[i]=='<':
 				j=i+1
 				while entry[j]!='>': j+=1
 				p2 = entry[i+1:j].replace(',',' ')
 				break
 		endPoint = j
-		for i in xrange(endPoint, N):
+		for i in range(endPoint, N):
 			if entry[i].isdigit()==True:
 				j=i+1
 				while entry[j].isdigit() or entry[j]=='.': j+=1
@@ -886,7 +707,7 @@ class pov:
 		endPoiint = j
 		sfShader = ''
 		pigmentIdx = entry[endPoint:N].find('pigment')+endPoint
-		for i in xrange(pigmentIdx, N):
+		for i in range(pigmentIdx, N):
 			if entry[i]=='<':
 				j=i+1
 				while entry[j]!='>': j+=1
@@ -930,14 +751,25 @@ class pov:
 	#	   }  
 	#	   type cylinder
 	#	}	
-		transform = '\ttransform {\n\t\tscale 1 1 %f\n\t\tscaleu %f\n\t\trotatey %f\n\t\trotate %f %f %f %f\n\t\ttranslate %f %f %f\n\t}' % (scalez, scaleu, 180*th/3.1415926, nx, ny, nz, 180-180*phi/3.1415926, center[0], center[1], center[2])
-		return '\nobject {\n\tshader %s\n%s\n%s' % (sfShader, transform, self.cylinderstr)
+		return ('\nobject {\n\tshader %s\n\ttransform {\n\t\tscale 1 1 %f\n\t\tscaleu %f\n\t\trotatey %f\n\t\trotate %f %f %f %f\n\t\ttranslate %f %f %f\n\t}\n\ttype cylinder\n}') % (sfShader, scalez, scaleu, 180*th/3.1415926, nx, ny, nz, 180-180*phi/3.1415926, center[0], center[1], center[2])
+
 
 # kflow end
 
 class pyKFlowPlugin:
 
 	def __init__(self, app):
+		self.parent = app.root
+		self.dialog = Pmw.Dialog(self.parent,
+							buttons = ('Render IPR',
+										'Render Full',
+										'Save SC',
+										'Reset Default',
+										'Exit'),
+							title = 'pyKFlow -- Sunflow Plugin for Pymol',
+							defaultbutton = 'Render IPR',
+							command = self.execute)
+		Pmw.setbusycursorattributes(self.dialog.component('hull'))
 
 		self.dropShadow = Tkinter.BooleanVar()
 		self.bgColor = '1 1 1'
@@ -957,18 +789,6 @@ class pyKFlowPlugin:
 		self.spColorShaderDict = {}
 
 		self.init_shader_color()
-
-		self.parent = app.root
-		self.dialog = Pmw.Dialog(self.parent,
-							buttons = ('Render IPR',
-										'Render Full',
-										'Save SC',
-										'Reset Default',
-										'Exit'),
-							title = 'pyKFlow -- Sunflow Plugin for Pymol',
-							defaultbutton = 'Render IPR',
-							command = self.execute)
-		Pmw.setbusycursorattributes(self.dialog.component('hull'))
 		
 		w = Tkinter.Label(self.dialog.interior(),
                           text='PyMOL KFlow \nKejue Jia, 2015 - www.morphojourney.com',
@@ -1227,19 +1047,18 @@ class pyKFlowPlugin:
 			newColor = '%s_shiny' % n
 			cmd.set_color(newColor, [r,g,b])		
 
-		print 'shader colors init done.'
+		print('shader colors init done.')
 
 	# clean all the shader settings in (selection shader tab)
 	def unsetShader(self):
- 		self.selectionConsole.set('Unset all selection shaders')
- 		self.seleShaderDict = {}
+		self.selectionConsole.set('Unset all selection shaders')
+		self.seleShaderDict = {}
 		self.spColorShaderDict = {}
-
 
 	# selection shader tab
 	# put sele: shader pair into seleShaderDict
 	def applyShader(self):
-		print 'new applyShader'
+		print('new applyShader')
 		sele = self.varSelectionName.get()
 		shader = self.optionMenu_selectionShader.getvalue()
 		sess = cmd.get_names('all')
@@ -1254,9 +1073,9 @@ class pyKFlowPlugin:
 							self.selectionConsole.set('Shader for [%s] is not empty. \n Click [Unset all] if scene has been changed.' % i)
 							return
 				self.seleShaderDict[i] = shader
-	 			self.selectionConsole.set('Set [%s] with [%s] shader' % (sele, self.seleShaderDict[i]))
-	 			# add into dictionary
-	 			self.sele2Color(i)
+				self.selectionConsole.set('Set [%s] with [%s] shader' % (sele, self.seleShaderDict[i]))
+				# add into dictionary
+				self.sele2Color(i)
 				return
 
 		# not return
@@ -1266,8 +1085,8 @@ class pyKFlowPlugin:
  	# transfer sele in seleShaderDict to color id
  	# sele -> color id
  	# return a dictionary with ['color': ('shader', 'sele')] information
- 	def sele2Color(self, sele):
- 		globalShader = self.optionMenu_shader.getvalue()
+	def sele2Color(self, sele):
+		globalShader = self.optionMenu_shader.getvalue()
 
 		newShader =  self.seleShaderDict[sele]
 		if newShader != globalShader: # should be different from global shader, otherwise do nothing
@@ -1299,7 +1118,7 @@ class pyKFlowPlugin:
 			cmd.set_color(color_id, newColor)
 			cmd.color(color_id, sele)			
 
-			print 'apply shader [%s] to selection [%s].' % (newShader, sele)			
+			print('apply shader [%s] to selection [%s].' % (newShader, sele))
 
 
 	# selection shader tab
@@ -1341,19 +1160,19 @@ class pyKFlowPlugin:
 								#self.spColorShaderDict.pop(key, 0)
 
 				self.seleShaderDict[i[0]] = shader
-	 			self.selectionConsole.set('Set [%s] with [%s] shader' % (sele, self.seleShaderDict[i[0]]))
+				self.selectionConsole.set('Set [%s] with [%s] shader' % (sele, self.seleShaderDict[i[0]]))
 	 			# add into dictionary
-	 			self.sele2Color()
+				self.sele2Color()
 
-	 	if match_flag == False:
+		if match_flag == False:
  			self.selectionConsole.set('Error: Selection [%s] does not exist.' % sele)
 
 
  	# transfer sele in seleShaderDict to color id
  	# sele -> color id
  	# return a dictionary with ['color': ('shader', 'sele')] information
- 	def sele2Color_deprecated(self):
- 		globalShader = self.optionMenu_shader.getvalue()
+	def sele2Color_deprecated(self):
+		globalShader = self.optionMenu_shader.getvalue()
 
  		# (color:shader) dictionary
  		# be used in shaderFactory.SCString()
@@ -1405,7 +1224,7 @@ class pyKFlowPlugin:
 							newColor = [float(newRGB[0]), float(newRGB[1]), float(newRGB[2])]
 							cmd.set_color(color_id, newColor)
 							cmd.color(color_id, ('ID %s' % '+'.join(atom_set)))
-						print 'apply shader [%s] to selection [%s].' % (newShader, i[0])
+						print('apply shader [%s] to selection [%s].' % (newShader, i[0]))
 
 
 	# background color pickup event
@@ -1453,7 +1272,7 @@ class pyKFlowPlugin:
 												filetypes = [('all', '*')],
 												parent = self.parent)
 		if filePath:
-			print 'copy kflow.jar into your HOME directory ...'
+			print('copy kflow.jar into your HOME directory ...')
 			shutil.copy(filePath, destPath)
 		return
 
@@ -1553,9 +1372,10 @@ class pyKFlowPlugin:
 		path_java='\"'+sunflowpath.replace('\\', '/')+'\"'
 
 		cmd_args = '%s -v 0 -o output.png kflow.sc' % (renderType)
-		print 'Start rendering ...'
-		p=subprocess.Popen('java -jar '+path_java+' '+cmd_args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
+		print('Start rendering ...')
+		#p=subprocess.Popen('java -jar '+path_java+' '+cmd_args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		p=subprocess.call('java -jar '+path_java+' '+cmd_args, shell=True)
+		'''
 		while True:
 			out = p.stdout.read(1)
 			if out == '' and p.poll() != None:
@@ -1563,5 +1383,6 @@ class pyKFlowPlugin:
 			if out!='':
 				sys.stdout.write(out)
 				sys.stdout.flush()
+		'''
 		
 
